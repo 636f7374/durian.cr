@@ -21,7 +21,7 @@
   * [This may cause the program to Freeze](https://github.com/crystal-lang/crystal/issues/8376), so I created this repository.  
 * Of course, Crystal Offical is [always busy](#related), it will not help you solve these problems.
   * Thanks to [rdp](https://github.com/rdp) for the help, this made me sure that the problem was caused by `C.getaddrinfo`.
-* Then I discovered the CrDNS(https://github.com/teknomunk/cr-dns) repository, but it was Broken too badly to use, so I gave up the idea.
+* Then I discovered the [CrDNS](https://github.com/teknomunk/cr-dns) repository, but it was Broken too badly to use, so I gave up the idea.
   * I started looking at [many documents](#references) and started researching how to build a DNS resolver.
   * It took me some time to make it, it's not troublesome, it's not easy.
 * That's it, Thanks for using, If you encounter any problems, please let me know.
