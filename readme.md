@@ -65,7 +65,7 @@
 
 ## Using
 
-* Http - Testing DNS resolution for IP availability
+* Client | Http - Testing DNS resolution for IP availability
 ```crystal
 require "durian"
 
@@ -101,9 +101,9 @@ end
 puts [length, String.new buffer.to_slice[0_i32, length]]
 ```
 
-* Multiple - A similar [react](https://reactphp.org/dns/) usage
+* Client | Query - A similar [react](https://reactphp.org/dns/) usage
 ```crystal
-require "druian"
+require "durian"
 
 servers = [] of Tuple(Socket::IPAddress, Durian::Protocol)
 servers << Tuple.new Socket::IPAddress.new("8.8.8.8", 53_i32), Durian::Protocol::UDP
