@@ -17,9 +17,9 @@
 
 ## Description
 
-* Because [Crystal Domain Name Resolver](https://github.com/crystal-lang/crystal/blob/master/src/socket/addrinfo.cr) uses `C.getaddrinfo`.
+* Because [Crystal Domain Name Resolver](https://github.com/crystal-lang/crystal/blob/master/src/socket/addrinfo.cr) uses `C.getaddrinfo`, It seems to have serious problems.
   * [This may cause the program to Freeze](https://github.com/crystal-lang/crystal/issues/8376), so I created this repository.  
-* Of course, Crystal Official is [always busy](#related), it will not help you solve these problems.
+* Of course, Crystal official is [always busy](#related), it will not help you solve these problems.
   * Thanks to [rdp](https://github.com/rdp) for the help, this made me sure that the problem was caused by `C.getaddrinfo`.
 * Then I discovered the [CrDNS](https://github.com/teknomunk/cr-dns) repository, but it was Broken too badly to use, so I gave up the idea.
   * I started looking at [many documents](#references) and started researching how to build a DNS resolver.
