@@ -1,0 +1,5 @@
+.DS_Store
+shard.lock
+.vscode
+/lib/
+bin/durian*

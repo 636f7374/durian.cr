@@ -1,0 +1,13 @@
+language: generic
+services:
+- docker
+matrix:
+  include:
+  - os: linux
+    dist: trusty
+  - os: osx
+install:
+- chmod +x bin/ci
+- bin/ci prepare_build
+script:
+- bin/ci build
