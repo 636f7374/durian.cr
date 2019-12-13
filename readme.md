@@ -1,7 +1,7 @@
 <div align = "center"><img src="images/icon.png" width="150" height="150" /></div>
 
 <div align = "center">
-  <h1>Durian.cr - Crystal DNS Resolver</h1>
+  <h1>Durian.cr - DNS Resolver</h1>
 </div>
 
 <p align="center">
