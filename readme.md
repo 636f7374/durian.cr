@@ -19,7 +19,7 @@
 
 * Because [Crystal Domain Name Resolver](https://github.com/crystal-lang/crystal/blob/master/src/socket/addrinfo.cr) uses `C.getaddrinfo`.
   * [This may cause the program to Freeze](https://github.com/crystal-lang/crystal/issues/8376), so I created this repository.  
-* Of course, Crystal Offical is [always busy](#related), it will not help you solve these problems.
+* Of course, Crystal Official is [always busy](#related), it will not help you solve these problems.
   * Thanks to [rdp](https://github.com/rdp) for the help, this made me sure that the problem was caused by `C.getaddrinfo`.
 * Then I discovered the [CrDNS](https://github.com/teknomunk/cr-dns) repository, but it was Broken too badly to use, so I gave up the idea.
   * I started looking at [many documents](#references) and started researching how to build a DNS resolver.
@@ -155,12 +155,12 @@ $ make test
 * [StackOverflow | Requesting A and AAAA records in single DNS query](https://stackoverflow.com/questions/4082081/requesting-a-and-aaaa-records-in-single-dns-query)
 * [StackOverflow | Example of DNS Compression Pointer Offset > than 12 bytes](https://stackoverflow.com/questions/39439283/example-of-dns-compression-pointer-offset-than-12-bytes)
 * [StackOverflow | why libuv do DNS request by multiple thread](https://stackoverflow.com/questions/44603059/why-libuv-do-dns-request-by-multiple-thread)
-* [Offical | DNS_HEADER structure](https://docs.microsoft.com/en-us/windows/win32/api/windns/ns-windns-dns_header)
-* [Offical | The Saga of Concurrent DNS in Python, and the Defeat of the Wicked Mutex Troll](https://engineering.mongodb.com/post/the-saga-of-concurrent-dns-in-python-and-the-defeat-of-the-wicked-mutex-troll)
-* [Offical | Help understanding DNS packet data](https://osqa-ask.wireshark.org/questions/50806/help-understanding-dns-packet-data)
-* [Offical | Ietf - RFC 1035](https://www.ietf.org/rfc/rfc1035.txt)
-* [Offical | Docs.rs::hyper_trust_dns_connector](https://docs.rs/hyper-trust-dns-connector/0.1.0/hyper_trust_dns_connector/)
-* [Offical | libuv provides asynchronous variants of getaddrinfo and getnameinfo](http://docs.libuv.org/en/v1.x/dns.html)
+* [Official | DNS_HEADER structure](https://docs.microsoft.com/en-us/windows/win32/api/windns/ns-windns-dns_header)
+* [Official | The Saga of Concurrent DNS in Python, and the Defeat of the Wicked Mutex Troll](https://engineering.mongodb.com/post/the-saga-of-concurrent-dns-in-python-and-the-defeat-of-the-wicked-mutex-troll)
+* [Official | Help understanding DNS packet data](https://osqa-ask.wireshark.org/questions/50806/help-understanding-dns-packet-data)
+* [Official | Ietf - RFC 1035](https://www.ietf.org/rfc/rfc1035.txt)
+* [Official | Docs.rs::hyper_trust_dns_connector](https://docs.rs/hyper-trust-dns-connector/0.1.0/hyper_trust_dns_connector/)
+* [Official | libuv provides asynchronous variants of getaddrinfo and getnameinfo](http://docs.libuv.org/en/v1.x/dns.html)
 * [Blogs | Adventures in Rust: Futures and Tokio](https://bryangilbert.com/post/code/rust/adventures-futures-tokio-rust/)
 * [Blogs | Cocoa: Asynchronous Host name lookups](https://eggerapps.at/blog/2014/hostname-lookups.html)
 * [Blogs | Using DNS with Libevent: high and low-level functionality](http://www.wangafu.net/~nickm/libevent-book/Ref9_dns.html)
