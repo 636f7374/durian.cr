@@ -65,6 +65,73 @@
 
 ## Using
 
+* Http - Testing DNS resolution for IP availability
+```crystal
+require "durian"
+
+servers = [] of Tuple(Socket::IPAddress, Durian::Protocol)
+servers << Tuple.new Socket::IPAddress.new("8.8.8.8", 53_i32), Durian::Protocol::UDP
+servers << Tuple.new Socket::IPAddress.new("1.1.1.1", 53_i32), Durian::Protocol::UDP
+
+buffer = uninitialized UInt8[4096_i32]
+
+resolver = Durian::Resolver.new servers
+resolver.ip_cache = Durian::Resolver::Cache::IPAddress.new
+
+begin
+  socket = Durian::TCPSocket.new "www.example.com", 80_i32, resolver, 5_i32
+  socket.read_timeout = 5_i32
+  socket.write_timeout = 5_i32
+rescue
+  abort "Connect Failed"
+end
+
+begin
+  socket << "GET / HTTP/1.1\r\nHost: www.example.com\r\nConnection: close\r\n\r\n"
+rescue
+  abort "Write Failed"
+end
+
+begin
+  length = socket.read buffer.to_slice
+rescue
+  abort "Read Failed"
+end
+
+puts [length, String.new buffer.to_slice[0_i32, length]]
+```
+
+* Multiple - A similar [react](https://reactphp.org/dns/) usage
+```crystal
+require "druian"
+
+servers = [] of Tuple(Socket::IPAddress, Durian::Protocol)
+servers << Tuple.new Socket::IPAddress.new("8.8.8.8", 53_i32), Durian::Protocol::UDP
+servers << Tuple.new Socket::IPAddress.new("1.1.1.1", 53_i32), Durian::Protocol::UDP
+
+resolver = Durian::Resolver.new servers
+resolver.cache = Durian::Resolver::Cache.new
+
+resolver.resolve "google.com", [Durian::Record::ResourceFlag::A, Durian::Record::ResourceFlag::AAAA] do |response|
+  puts [:Google, Time.utc, response]
+end
+
+resolver.resolve "twitter.com", Durian::Record::ResourceFlag::SOA do |response|
+  puts [:Twitter, Time.utc, response]
+end
+
+resolver.resolve "facebook.com", [Durian::Record::ResourceFlag::A, Durian::Record::ResourceFlag::AAAA] do |response|
+  puts [:FaceBook, Time.utc, response]
+end
+
+resolver.resolve "twitter.com", Durian::Record::ResourceFlag::SOA do |response|
+  puts [:Twitter, Time.utc, response]
+end
+
+resolver.run
+```
+
+
 ### Used as Shard
 Add this to your application's shard.yml:
 ```yaml

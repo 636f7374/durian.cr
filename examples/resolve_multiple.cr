@@ -8,19 +8,19 @@ resolver = Durian::Resolver.new servers
 resolver.cache = Durian::Resolver::Cache.new
 
 resolver.resolve "google.com", [Durian::Record::ResourceFlag::A, Durian::Record::ResourceFlag::AAAA] do |response|
-  puts [:google, Time.utc, response]
+  puts [:Google, Time.utc, response]
 end
 
 resolver.resolve "twitter.com", Durian::Record::ResourceFlag::SOA do |response|
-  puts [:twitter, Time.utc, response]
+  puts [:Twitter, Time.utc, response]
 end
 
 resolver.resolve "facebook.com", [Durian::Record::ResourceFlag::A, Durian::Record::ResourceFlag::AAAA] do |response|
-  puts [:facebook, Time.utc, response]
+  puts [:FaceBook, Time.utc, response]
 end
 
 resolver.resolve "twitter.com", Durian::Record::ResourceFlag::SOA do |response|
-  puts [:twitter, Time.utc, response]
+  puts [:Twitter, Time.utc, response]
 end
 
 resolver.run
