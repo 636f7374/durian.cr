@@ -12,7 +12,7 @@
   <a href="https://github.com/636f7374/durian.cr/releases">
     <img src="https://img.shields.io/github/release/636f7374/durian.cr.svg" /></a>
   <a href="https://github.com/636f7374/durian.cr/blob/master/license">
-  	<img src="https://img.shields.io/github/license/636f7374/durian.cr.svg"></a>
+    <img src="https://img.shields.io/github/license/636f7374/durian.cr.svg"></a>
 </p>
 
 ## Description
@@ -66,6 +66,7 @@
 ## Using
 
 * Client | Http - Testing DNS resolution for IP availability
+
 ```crystal
 require "durian"
 
@@ -102,6 +103,7 @@ puts [length, String.new buffer.to_slice[0_i32, length]]
 ```
 
 * Client | Query - A similar [react](https://reactphp.org/dns/) usage
+
 ```crystal
 require "durian"
 
@@ -133,6 +135,7 @@ resolver.run
 
 
 ### Used as Shard
+
 Add this to your application's shard.yml:
 ```yaml
 dependencies:
@@ -141,16 +144,19 @@ dependencies:
 ```
 
 ### Installation
+
 ```bash
 $ git clone https://github.com/636f7374/durian.cr.git
 ```
 
 ## Development
+
 ```bash
 $ make test
 ```
 
 ## References
+
 * [StackOverflow | How to convert a string or integer to binary in Ruby?](https://stackoverflow.com/questions/2339695/how-to-convert-a-string-or-integer-to-binary-in-ruby)
 * [StackOverflow | Requesting A and AAAA records in single DNS query](https://stackoverflow.com/questions/4082081/requesting-a-and-aaaa-records-in-single-dns-query)
 * [StackOverflow | Example of DNS Compression Pointer Offset > than 12 bytes](https://stackoverflow.com/questions/39439283/example-of-dns-compression-pointer-offset-than-12-bytes)
@@ -179,6 +185,7 @@ $ make test
 * ...
 
 ## Related
+
 * [#8480 | blocking call in one fiber can cause IO timeouts in others](https://github.com/crystal-lang/crystal/issues/8480)
 * [#4816 | Add Resolv class to standard library](https://github.com/crystal-lang/crystal/issues/4816)
 * [#2660 | Fix/Implement own DNS resolver](https://github.com/crystal-lang/crystal/issues/2660)
@@ -189,14 +196,15 @@ $ make test
 * ...
 
 ## Credit
+
 * [\_Icon::wanicon/fruits](https://www.flaticon.com/packs/fruits-and-vegetables-48)
 
 ## Contributors
+
 |Name|Creator|Maintainer|Contributor|
 |:---:|:---:|:---:|:---:|
 |**[636f7374](https://github.com/636f7374)**|√|√||
-|**[rdp](https://github.com/rdp)**|||√|
-|**[teknomunk](https://github.com/teknomunk)**|||√|
 
 ## License
+
 * MIT License
