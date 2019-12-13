@@ -21,7 +21,7 @@
   * [This may cause the program to Freeze](https://github.com/crystal-lang/crystal/issues/8376), so I created this repository.  
 * Of course, Crystal official is [always busy](#related), it will not help you solve these problems.
   * Thanks to [rdp](https://github.com/rdp) for the help, this made me sure that the problem was caused by `C.getaddrinfo`.
-* Then I discovered the [CrDNS](https://github.com/teknomunk/cr-dns) repository, but it too Broken, so I gave up the idea.
+* Then I discovered the [CrDNS](https://github.com/teknomunk/cr-dns) repository, but it too broken, so I gave up the idea.
   * I started looking at [many documents](#references) and started researching how to build a DNS resolver.
   * It took me some time to make it, it's not troublesome, it's not easy.
 * That's it, Thanks for using, If you encounter any problems, please let me know.
@@ -51,9 +51,9 @@
 * This project is currently in WIP (Work In Progress), it may have some undiscovered problems.
 * If you add multiple DNS servers
   * if the connection fails or there is no response packet, he will try to use the next server.
-* `C.getaddrinfo` is compatible with green threads, It may cause your program to [pause](#references).
+* `C.getaddrinfo` is incompatible with green threads, It may cause your program to [pause](#references).
   * `C.getaddrinfo` is too bad, you should not use it in green thread.
-  * (E.g. libuv `uv_getaddrinfo`, libevent `evdns_getaddrinfo`) is too complicated, you may encounter many problems.
+  * In addition, (libuv `uv_getaddrinfo`, libevent `evdns_getaddrinfo`) is too complicated, you may encounter many problems.
 * Why is its name `Durian.cr`, it's just random, six-word English words.
 
 ## Next
