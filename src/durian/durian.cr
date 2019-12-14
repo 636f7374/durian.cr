@@ -21,47 +21,6 @@ module Durian
   class PacketTypeError < Exception
   end
 
-  def self.parse_bit_flags(io, buffer : IO)
-    flags_buffer = uninitialized UInt8[16_i32]
-    slice_buffer = flags_buffer.to_slice
-
-    flags = io.read_network_short rescue nil
-    raise PacketTypeError.new unless flags
-
-    buffer.write_network_short flags
-    split = ("%016b" % flags).split String.new
-
-    temporary = IO::Memory.new
-
-    split.each_with_index do |bit, id|
-      next unless _bit = bit.to_u8?
-
-      if _bit > 1_i32
-        temporary.close
-        raise PacketTypeError.new
-      end
-
-      temporary.write Bytes[_bit] if id < 16_i32
-    end
-
-    temporary.rewind
-    temporary
-  end
-
-  def self.parse_four_bit_integer(io : IO)
-    return 0_i32 unless _one_ = io.read_byte
-    return 0_i32 unless _two_ = io.read_byte
-    return 0_i32 unless three = io.read_byte
-    return 0_i32 unless _four = io.read_byte
-
-    return 0_i32 if _one_ > 1_i32 || _two_ > 1_i32
-    return 0_i32 if three > 1_i32 || _four > 1_i32
-
-    String.build do |_io|
-      _io << _one_ << _two_ << three << _four
-    end.to_i? || 0_i32
-  end
-
   def limit_length_buffer(io : IO) : IO::Memory
     next_length = uninitialized UInt8[1_i32]
     length = io.read next_length.to_slice
@@ -71,22 +30,12 @@ module Durian
   end
 
   def self.limit_length_buffer(io : IO, length : Int)
-    begin
-      limit_length_buffer! io, length
-    rescue ex
-      IO::Memory.new
-    end
+    limit_length_buffer! io, length rescue IO::Memory.new
   end
 
   def self.limit_length_buffer!(io : IO, length : Int)
     temporary = IO::Memory.new
-
-    begin
-      IO.copy io, temporary, length
-    rescue ex
-      temporary.close
-      raise ex
-    end
+    IO.copy io, temporary, length rescue nil
 
     temporary.rewind
     temporary

@@ -18,8 +18,8 @@ class Durian::Record::SOA < Durian::Record
 
   {% for name in ["authority", "answer", "additional"] %}
   def self.{{name.id}}_from_io?(resource_record : SOA, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
-    data_length = io.read_network_short
-    buffer.write_network_short data_length
+    data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+    buffer.write_bytes data_length, IO::ByteFormat::BigEndian
 
     data_buffer = Durian.limit_length_buffer io, data_length
 
@@ -29,17 +29,17 @@ class Durian::Record::SOA < Durian::Record
       resource_record.primaryNameServer = Durian.decode_address data_buffer, buffer
       resource_record.authorityMailBox = Durian.decode_address data_buffer, buffer
 
-      resource_record.serialNumber = data_buffer.read_network_long
-      resource_record.refreshInterval = data_buffer.read_network_long
-      resource_record.retryInterval = data_buffer.read_network_long
-      resource_record.expireLimit = data_buffer.read_network_long
-      resource_record.minimiumTimeToLive = data_buffer.read_network_long
+      resource_record.serialNumber = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
+      resource_record.refreshInterval = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
+      resource_record.retryInterval = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
+      resource_record.expireLimit = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
+      resource_record.minimiumTimeToLive = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
 
-      buffer.write_network_long resource_record.serialNumber
-      buffer.write_network_long resource_record.refreshInterval
-      buffer.write_network_long resource_record.retryInterval
-      buffer.write_network_long resource_record.expireLimit
-      buffer.write_network_long resource_record.minimiumTimeToLive
+      buffer.write_bytes resource_record.serialNumber, IO::ByteFormat::BigEndian
+      buffer.write_bytes resource_record.refreshInterval, IO::ByteFormat::BigEndian
+      buffer.write_bytes resource_record.retryInterval, IO::ByteFormat::BigEndian
+      buffer.write_bytes resource_record.expireLimit, IO::ByteFormat::BigEndian
+      buffer.write_bytes resource_record.minimiumTimeToLive, IO::ByteFormat::BigEndian
     rescue ex
       data_buffer.close ensure raise ex
     end

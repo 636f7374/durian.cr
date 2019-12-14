@@ -85,11 +85,11 @@ class Durian::Record
     IN = 1_i32
   end
 
+  property from : String?
   property cls : Cls
   property ttl : UInt32
-  property from : String?
 
-  def initialize(@cls : Cls = Cls::IN, @ttl : UInt32 = 0_u32, @from : String? = nil)
+  def initialize(@from : String? = nil, @cls : Cls = Cls::IN, @ttl : UInt32 = 0_u32)
   end
 end
 

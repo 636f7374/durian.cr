@@ -6,14 +6,14 @@ class Durian::Record::TXT < Durian::Record
 
   {% for name in ["authority", "answer", "additional"] %}
   def self.{{name.id}}_from_io?(resource_record : TXT, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
-    data_length = io.read_network_short
-    buffer.write_network_short data_length
+    data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+    buffer.write_bytes data_length, IO::ByteFormat::BigEndian
 
-    txt_length = io.read_byte
-    raise MalformedPacket.new unless txt_length
+    raise MalformedPacket.new unless txt_length = io.read_byte
 
     begin
       buffer.write Bytes[txt_length]
+
       data_buffer = IO::Memory.new
       IO.copy io, data_buffer, txt_length
 

@@ -8,15 +8,15 @@ class Durian::Record::MX < Durian::Record
 
   {% for name in ["authority", "answer", "additional"] %}
   def self.{{name.id}}_from_io?(resource_record : MX, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
-    data_length = io.read_network_short
-    buffer.write_network_short data_length
+    data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+    buffer.write_bytes data_length, IO::ByteFormat::BigEndian
 
     data_buffer = Durian.limit_length_buffer io, data_length
 
     begin
       IO.copy data_buffer, buffer ensure data_buffer.rewind
 
-      resource_record.preference = data_buffer.read_network_short
+      resource_record.preference = data_buffer.read_bytes UInt16, IO::ByteFormat::BigEndian
       resource_record.mailExchange = Durian.decode_address data_buffer, buffer
     rescue ex
       data_buffer.close ensure raise ex

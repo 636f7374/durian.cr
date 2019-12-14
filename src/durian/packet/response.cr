@@ -43,21 +43,21 @@ module Durian::Packet
     end
 
     private def self.parse_flags_with_count!(response : Response, io, buffer : IO)
-      begin
-        temporary = Durian.parse_bit_flags io, buffer
-        qr_flags = temporary.read_byte || 0_u8
-        operation_code = Durian.parse_four_bit_integer temporary
-        authoritative_answer = temporary.read_byte || 0_u8
-        truncated = temporary.read_byte || 0_u8
-        recursion_desired = temporary.read_byte || 0_u8
-        recursion_available = temporary.read_byte || 0_u8
-        zero = temporary.read_byte || 0_u8
-        authenticated_data = temporary.read_byte || 0_u8
-        checking_disabled = temporary.read_byte || 0_u8
-        response_code = Durian.parse_four_bit_integer temporary
-      rescue ex
-        temporary.try &.close ensure raise ex
-      end
+      static_bits = ByteFormat.extract_uint16_bits io, buffer
+      bits_io = IO::Memory.new static_bits.to_slice
+
+      qr_flags = bits_io.read_byte || 0_u8
+      raise MalformedPacket.new "Non-response Packet" if qr_flags != 1_i32
+
+      operation_code = ByteFormat.parse_four_bit_integer bits_io
+      authoritative_answer = bits_io.read_byte || 0_u8
+      truncated = bits_io.read_byte || 0_u8
+      recursion_desired = bits_io.read_byte || 0_u8
+      recursion_available = bits_io.read_byte || 0_u8
+      zero = bits_io.read_byte || 0_u8
+      authenticated_data = bits_io.read_byte || 0_u8
+      checking_disabled = bits_io.read_byte || 0_u8
+      response_code = ByteFormat.parse_four_bit_integer bits_io
 
       response.operationCode = OperationCode.new operation_code
       response.authoritativeAnswer = AuthoritativeAnswer.new authoritative_answer.to_i32
@@ -68,19 +68,15 @@ module Durian::Packet
       response.checkingDisabled = CheckingDisabled.new checking_disabled.to_i32
       response.responseCode = ResponseCode.new response_code
 
-      begin
-        response.questionCount = io.read_network_short
-        response.answerCount = io.read_network_short
-        response.authorityCount = io.read_network_short
-        response.additionalCount = io.read_network_short
+      response.questionCount = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+      response.answerCount = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+      response.authorityCount = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+      response.additionalCount = io.read_bytes UInt16, IO::ByteFormat::BigEndian
 
-        buffer.write_network_short response.questionCount
-        buffer.write_network_short response.answerCount
-        buffer.write_network_short response.authorityCount
-        buffer.write_network_short response.additionalCount
-      rescue ex
-        temporary.try &.close ensure raise ex
-      end
+      buffer.write_bytes response.questionCount, IO::ByteFormat::BigEndian
+      buffer.write_bytes response.answerCount, IO::ByteFormat::BigEndian
+      buffer.write_bytes response.authorityCount, IO::ByteFormat::BigEndian
+      buffer.write_bytes response.additionalCount, IO::ByteFormat::BigEndian
     end
 
     def self.from_io(io : IO, buffer : IO::Memory = IO::Memory.new, sync_buffer_close : Bool = true)
@@ -92,14 +88,13 @@ module Durian::Packet
       bad_decode = false
 
       begin
-        trans_id = io.read_network_short
-        buffer.write_network_short trans_id
-        response.transId = trans_id
+        trans_id = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+        buffer.write_bytes trans_id, IO::ByteFormat::BigEndian
       rescue ex
-        buffer.close
         raise MalformedPacket.new ex.message
       end
 
+      response.transId = trans_id
       parse_flags_with_count! response, io, buffer
 
       response.questionCount.times do

@@ -18,8 +18,9 @@ module Durian::Section
       return unless _query = query
 
       Durian.encode_chunk_ipv4_address _query, io
-      io.write_network_short flag.to_i32
-      io.write_network_short cls.to_i32
+
+      io.write_bytes flag.to_u16, IO::ByteFormat::BigEndian
+      io.write_bytes cls.to_u16, IO::ByteFormat::BigEndian
     end
 
     def self.encode(flag : ResourceFlag, query : String, io : IO, cls : Cls = Cls::IN)
@@ -29,12 +30,15 @@ module Durian::Section
 
     def self.decode(io : IO, buffer : IO)
       query = Durian.parse_chunk_address io, buffer
-      flag = ResourceFlag.new io.read_network_short.to_i32
-      _cls = Cls.new io.read_network_short.to_i32
-      question = new flag, query, _cls
+      flag = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+      _cls = io.read_bytes UInt16, IO::ByteFormat::BigEndian
 
-      buffer.write_network_short flag.to_i32
-      buffer.write_network_short _cls.to_i32
+      question = new ResourceFlag.new flag.to_i32
+      question.query = query
+      question.cls = Cls.new _cls.to_i32
+
+      buffer.write_bytes flag, IO::ByteFormat::BigEndian
+      buffer.write_bytes _cls, IO::ByteFormat::BigEndian
 
       question
     end

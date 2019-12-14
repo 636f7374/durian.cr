@@ -23,19 +23,18 @@ module Durian::Section
 
     def self.decode(io : IO, buffer : IO)
       from = Section.decode_resource_pointer io, buffer
-      flag = ResourceFlag.new io.read_network_short.to_i32
-      answer = new flag
+      flag = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+      _cls = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+      _ttl = io.read_bytes UInt32, IO::ByteFormat::BigEndian
 
-      _cls = Cls.new io.read_network_short.to_i32
-      _ttl = io.read_network_long
-
+      answer = new ResourceFlag.new flag.to_i32
       answer.resourceRecord.from = from
-      answer.resourceRecord.cls = _cls
+      answer.resourceRecord.cls = Cls.new _cls.to_i32
       answer.resourceRecord.ttl = _ttl
 
-      buffer.write_network_short flag.to_i32
-      buffer.write_network_short _cls.to_i32
-      buffer.write_network_long _ttl
+      buffer.write_bytes flag, IO::ByteFormat::BigEndian
+      buffer.write_bytes _cls, IO::ByteFormat::BigEndian
+      buffer.write_bytes _ttl, IO::ByteFormat::BigEndian
 
       Section.decode_record_answer answer.resourceRecord, io, buffer
 

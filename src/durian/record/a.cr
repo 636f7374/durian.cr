@@ -6,8 +6,8 @@ class Durian::Record::A < Durian::Record
 
   {% for name in ["authority", "answer", "additional"] %}
   def self.{{name.id}}_from_io?(resource_record : A, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
-    data_length = io.read_network_short
-    buffer.write_network_short data_length
+    data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+    buffer.write_bytes data_length, IO::ByteFormat::BigEndian
 
     resource_record.ipv4Address = decode_{{name.id}}_ipv4_address io, buffer, data_length
   end

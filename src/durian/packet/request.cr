@@ -42,35 +42,36 @@ module Durian::Packet
     {% end %}
 
     private def self.parse_flags_with_count!(request : Request, io, buffer : IO)
-      begin
-        temporary = Durian.parse_bit_flags io, buffer
-        qr_flags = temporary.read_byte || 0_u8
-        operation_code = Durian.parse_four_bit_integer temporary
-        authoritative_answer = temporary.read_byte || 0_u8
-        truncated = temporary.read_byte || 0_u8
-        recursion_desired = temporary.read_byte || 0_u8
-        recursion_available = temporary.read_byte || 0_u8
-        zero = temporary.read_byte || 0_u8
-        authenticated_data = temporary.read_byte || 0_u8
-        checking_disabled = temporary.read_byte || 0_u8
-        response_code = Durian.parse_four_bit_integer temporary
-      rescue ex
-        temporary.try &.close ensure raise ex
-      end
+      static_bits = ByteFormat.extract_uint16_bits io, buffer
+      bits_io = IO::Memory.new static_bits.to_slice
+
+      qr_flags = bits_io.read_byte || 0_u8
+      raise MalformedPacket.new "Non-request Packet" if qr_flags != 0_i32
+
+      operation_code = ByteFormat.parse_four_bit_integer bits_io
+      authoritative_answer = bits_io.read_byte || 0_u8
+      truncated = bits_io.read_byte || 0_u8
+      recursion_desired = bits_io.read_byte || 0_u8
+      recursion_available = bits_io.read_byte || 0_u8
+      zero = bits_io.read_byte || 0_u8
+      authenticated_data = bits_io.read_byte || 0_u8
+      checking_disabled = bits_io.read_byte || 0_u8
+      response_code = ByteFormat.parse_four_bit_integer bits_io
 
       request.operationCode = OperationCode.new operation_code
-      request.truncated = Truncated.new truncated
-      request.recursionDesired = RecursionDesired.new recursion_desired
-      request.authenticatedData = AuthenticatedData.new authenticated_data
+      request.truncated = Truncated.new truncated.to_i32
+      request.recursionDesired = RecursionDesired.new recursion_desired.to_i32
+      request.authenticatedData = AuthenticatedData.new authenticated_data.to_i32
 
-      begin
-        request.questionCount = io.read_network_short
-        answer_count = io.read_network_short
-        authority_count = io.read_network_short
-        additional_count = io.read_network_short
-      rescue ex
-        temporary.try &.close ensure raise ex
-      end
+      request.questionCount = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+      answer_count = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+      authority_count = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+      additional_count = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+
+      buffer.write_bytes request.questionCount, IO::ByteFormat::BigEndian
+      buffer.write_bytes answer_count, IO::ByteFormat::BigEndian
+      buffer.write_bytes authority_count, IO::ByteFormat::BigEndian
+      buffer.write_bytes additional_count, IO::ByteFormat::BigEndian
     end
 
     def self.from_io(io : IO, buffer : IO::Memory = IO::Memory.new, sync_buffer_close : Bool = true)
@@ -82,10 +83,9 @@ module Durian::Packet
       bad_decode = false
 
       begin
-        trans_id = io.read_network_short
-        buffer.write_network_short trans_id
+        trans_id = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+        buffer.write_bytes trans_id, IO::ByteFormat::BigEndian
       rescue ex
-        buffer.close
         raise MalformedPacket.new ex.message
       end
 
@@ -105,18 +105,8 @@ module Durian::Packet
 
     def to_slice
       io = IO::Memory.new
-
-      begin
-        to_io io
-      rescue ex
-        io.close
-        raise ex
-      end
-
-      slice = io.to_slice
-
-      io.close
-      slice
+      to_io io
+      io.to_slice
     end
 
     # Request
@@ -129,7 +119,9 @@ module Durian::Packet
     def to_io(io : IO)
       # Identification field is used to match up replies and requests.
       @transId = random.rand UInt16 unless transId
-      io.write_network_short transId || random.rand UInt16
+      if _trans_id = transId
+        io.write_bytes _trans_id, IO::ByteFormat::BigEndian
+      end
 
       # Control field contains: QR | OpCode | AA | TC | RD | RA | Z | AD | CD | RCODE
       flags = String.bits_build do |io|
@@ -175,20 +167,20 @@ module Durian::Packet
         io << "0000"
       end
 
-      io.write_network_short flags || 256_i32
+      io.write_bytes flags || 256_u16, IO::ByteFormat::BigEndian
 
       # ... count fields give the number of entry in each following sections:
       # Question count
-      io.write_network_short queries.size
+      io.write_bytes queries.size.to_u16, IO::ByteFormat::BigEndian
 
       # Answer count
-      io.write_network_short 0_i32
+      io.write_bytes 0_u16, IO::ByteFormat::BigEndian
 
       # Authority count
-      io.write_network_short 0_i32
+      io.write_bytes 0_u16, IO::ByteFormat::BigEndian
 
       # Additional count
-      io.write_network_short 0_i32
+      io.write_bytes 0_u16, IO::ByteFormat::BigEndian
 
       # Question count equals to 1 in general, but could be 0 or > 1 in very special cases
       queries.each &.encode io
