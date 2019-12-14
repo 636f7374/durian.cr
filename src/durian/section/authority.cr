@@ -1,11 +1,8 @@
 module Durian::Section
   class Authority
-    alias ResourceFlag = Record::ResourceFlag
-    alias Cls = Record::Cls
-
     property resourceRecord : Record
 
-    def initialize(flag : ResourceFlag = ResourceFlag::ANY)
+    def initialize(flag : RecordFlag = RecordFlag::ANY)
       @resourceRecord = Section.new_resource_record flag
     end
 
@@ -28,7 +25,7 @@ module Durian::Section
       _cls = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       _ttl = io.read_bytes UInt32, IO::ByteFormat::BigEndian
 
-      authority = new ResourceFlag.new flag.to_i32
+      authority = new RecordFlag.new flag.to_i32
       authority.resourceRecord.from = from
       authority.resourceRecord.cls = Cls.new _cls.to_i32
       authority.resourceRecord.ttl = _ttl

@@ -12,7 +12,7 @@ module Durian::Section
   end
   {% end %}
 
-  def self.new_resource_record(flag : Record::ResourceFlag)
+  def self.new_resource_record(flag : RecordFlag)
     {% begin %}
       case flag
       	 {% for name in RecordType %}

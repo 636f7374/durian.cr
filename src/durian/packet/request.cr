@@ -24,12 +24,12 @@ module Durian::Packet
       @random = Random.new
     end
 
-    def add_query(query : String, flag : Record::ResourceFlag)
+    def add_query(query : String, flag : RecordFlag)
       {% begin %}
         case flag
          {% for name in RecordType %}
-        when Record::ResourceFlag::{{name.upcase.id}}
-          queries << Section::Question.new Record::ResourceFlag::{{name.upcase.id}}, query
+        when RecordFlag::{{name.upcase.id}}
+          queries << Section::Question.new RecordFlag::{{name.upcase.id}}, query
          {% end %}
         end
       {% end %}
@@ -37,7 +37,7 @@ module Durian::Packet
 
     {% for name in RecordType %}
     def add_{{name.downcase.id}}_query(query : String)
-      add_query query, Record::ResourceFlag::{{name.upcase.id}}
+      add_query query, RecordFlag::{{name.upcase.id}}
     end
     {% end %}
 

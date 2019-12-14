@@ -3,7 +3,7 @@ require "../src/durian.cr"
 buffer = uninitialized UInt8[4096_i32]
 
 request = Durian::Packet::Request.new
-request.add_query "www.example.com", Durian::Record::ResourceFlag::A
+request.add_query "www.example.com", Durian::RecordFlag::A
 
 _request = IO::Memory.new request.to_slice
 puts [:Request, Durian::Packet::Request.from_io _request]

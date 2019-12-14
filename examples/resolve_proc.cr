@@ -7,19 +7,19 @@ servers << Tuple.new Socket::IPAddress.new("1.1.1.1", 53_i32), Durian::Protocol:
 resolver = Durian::Resolver.new servers
 resolver.cache = Durian::Resolver::Cache.new
 
-resolver.resolve "google.com", [Durian::Record::ResourceFlag::A, Durian::Record::ResourceFlag::AAAA] do |response|
+resolver.resolve "google.com", [Durian::RecordFlag::A, Durian::RecordFlag::AAAA] do |response|
   puts [:Google, Time.utc, response]
 end
 
-resolver.resolve "twitter.com", Durian::Record::ResourceFlag::SOA do |response|
+resolver.resolve "twitter.com", Durian::RecordFlag::SOA do |response|
   puts [:Twitter, Time.utc, response]
 end
 
-resolver.resolve "facebook.com", [Durian::Record::ResourceFlag::A, Durian::Record::ResourceFlag::AAAA] do |response|
+resolver.resolve "facebook.com", [Durian::RecordFlag::A, Durian::RecordFlag::AAAA] do |response|
   puts [:FaceBook, Time.utc, response]
 end
 
-resolver.resolve "twitter.com", Durian::Record::ResourceFlag::SOA do |response|
+resolver.resolve "twitter.com", Durian::RecordFlag::SOA do |response|
   puts [:Twitter, Time.utc, response]
 end
 

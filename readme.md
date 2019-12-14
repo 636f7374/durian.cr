@@ -66,7 +66,7 @@
 
 ## Using
 
-* Client | Http - Testing DNS resolution for IP availability
+* Client | Http - Testing DNS resolution for IP availability.
 
 ```crystal
 require "durian"
@@ -103,7 +103,7 @@ end
 puts [length, String.new buffer.to_slice[0_i32, length]]
 ```
 
-* Client | Query - A similar [React](https://reactphp.org/dns/) usage
+* Client | Query - A similar [React](https://reactphp.org/dns/) Proc usage.
 
 ```crystal
 require "durian"
@@ -115,26 +115,26 @@ servers << Tuple.new Socket::IPAddress.new("1.1.1.1", 53_i32), Durian::Protocol:
 resolver = Durian::Resolver.new servers
 resolver.cache = Durian::Resolver::Cache.new
 
-resolver.resolve "google.com", [Durian::Record::ResourceFlag::A, Durian::Record::ResourceFlag::AAAA] do |response|
+resolver.resolve "google.com", [Durian::RecordFlag::A, Durian::RecordFlag::AAAA] do |response|
   puts [:Google, Time.utc, response]
 end
 
-resolver.resolve "twitter.com", Durian::Record::ResourceFlag::SOA do |response|
+resolver.resolve "twitter.com", Durian::RecordFlag::SOA do |response|
   puts [:Twitter, Time.utc, response]
 end
 
-resolver.resolve "facebook.com", [Durian::Record::ResourceFlag::A, Durian::Record::ResourceFlag::AAAA] do |response|
+resolver.resolve "facebook.com", [Durian::RecordFlag::A, Durian::RecordFlag::AAAA] do |response|
   puts [:FaceBook, Time.utc, response]
 end
 
-resolver.resolve "twitter.com", Durian::Record::ResourceFlag::SOA do |response|
+resolver.resolve "twitter.com", Durian::RecordFlag::SOA do |response|
   puts [:Twitter, Time.utc, response]
 end
 
 resolver.run
 ```
 
-* Client | Packet - from_io, to_io usage
+* Client | Packet - from_io, to_io usage.
 
 ```crystal
 require "durian"
@@ -142,7 +142,7 @@ require "durian"
 buffer = uninitialized UInt8[4096_i32]
 
 request = Durian::Packet::Request.new
-request.add_query "www.example.com", Durian::Record::ResourceFlag::A
+request.add_query "www.example.com", Durian::RecordFlag::A
 
 _request = IO::Memory.new request.to_slice
 puts [:Request, Durian::Packet::Request.from_io _request]

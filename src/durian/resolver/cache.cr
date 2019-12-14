@@ -57,14 +57,14 @@ class Durian::Resolver
       value
     end
 
-    def expires?(name, flag : Durian::Record::ResourceFlag)
+    def expires?(name, flag : Durian::RecordFlag)
       return unless kind = collects[name]?
       return unless updated_at = kind.update_at? flag
 
       (Time.local - updated_at) > recordExpires
     end
 
-    def get(name, flag : Durian::Record::ResourceFlag)
+    def get(name, flag : Durian::RecordFlag)
       return unless kind = collects[name]?
       return unless _record = kind.record? flag
 
@@ -72,7 +72,7 @@ class Durian::Resolver
       _record.packet
     end
 
-    def set(name : String, packet : Durian::Packet::Response, flag : Durian::Record::ResourceFlag)
+    def set(name : String, packet : Durian::Packet::Response, flag : Durian::RecordFlag)
       inactive_clean
 
       insert name unless collects[name]?
@@ -81,7 +81,7 @@ class Durian::Resolver
       set kind, packet, flag
     end
 
-    private def set(kind : RecordKind, packet : Durian::Packet::Response, flag : Durian::Record::ResourceFlag)
+    private def set(kind : RecordKind, packet : Durian::Packet::Response, flag : Durian::RecordFlag)
       return unless item = kind.force_fetch flag
 
       item.packet = packet
@@ -186,7 +186,7 @@ class Durian::Resolver
       end
       {% end %}
 
-      def record?(flag : Durian::Record::ResourceFlag)
+      def record?(flag : Durian::RecordFlag)
         {% begin %}
         case flag
           {% for name in RecordType %}
@@ -197,7 +197,7 @@ class Durian::Resolver
         {% end %}
       end
 
-      def create(flag : Durian::Record::ResourceFlag)
+      def create(flag : Durian::RecordFlag)
         {% begin %}
         case flag
           {% for name in RecordType %}
@@ -208,13 +208,13 @@ class Durian::Resolver
         {% end %}
       end
 
-      def update_at?(flag : Durian::Record::ResourceFlag)
+      def update_at?(flag : Durian::RecordFlag)
         return unless _record = record? flag
 
         _record.updateAt
       end
 
-      def force_fetch(flag : Durian::Record::ResourceFlag)
+      def force_fetch(flag : Durian::RecordFlag)
         create flag unless record? flag
 
         record? flag

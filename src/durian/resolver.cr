@@ -1,8 +1,8 @@
 class Durian::Resolver
-  IPAddressRecordFlags = [Record::ResourceFlag::A, Record::ResourceFlag::AAAA]
+  IPAddressRecordFlags = [RecordFlag::A, RecordFlag::AAAA]
 
-  alias ResolveResponse = Array(Tuple(String, Record::ResourceFlag, Packet::Response))
-  alias ResolveTask = Tuple(Array(Record::ResourceFlag), Proc(ResolveResponse, Nil))
+  alias ResolveResponse = Array(Tuple(String, RecordFlag, Packet::Response))
+  alias ResolveTask = Tuple(Array(RecordFlag), Proc(ResolveResponse, Nil))
   alias NetworkClient = Network::TCPClient | Network::UDPClient
   alias AliasServer = Hash(String, String | Array(Socket::IPAddress))
 
@@ -107,7 +107,7 @@ class Durian::Resolver
     @cleanAt = Time.local
   end
 
-  def resolve_by_flag!(host : String, flag : Record::ResourceFlag)
+  def resolve_by_flag!(host : String, flag : RecordFlag)
     dnsServers.each do |server|
       socket = Network.create_client server,
         read_timeout, write_timeout, connect_timeout rescue nil
@@ -120,7 +120,7 @@ class Durian::Resolver
     end
   end
 
-  def resolve_by_flag!(socket : NetworkClient, host : String, flag : Record::ResourceFlag) : Packet::Response?
+  def resolve_by_flag!(socket : NetworkClient, host : String, flag : RecordFlag) : Packet::Response?
     buffer = uninitialized UInt8[4096_i32]
 
     request = Packet::Request.new
@@ -275,20 +275,20 @@ class Durian::Resolver
     Socket::IPAddress.new host, 0_i32 rescue nil
   end
 
-  def set_cache(host, packet : Packet::Response, flag : Record::ResourceFlag)
+  def set_cache(host, packet : Packet::Response, flag : RecordFlag)
     return unless _cache = cache
 
     _cache.set host, packet, flag
   end
 
-  def fetch_raw_cache(host, flag : Record::ResourceFlag)
+  def fetch_raw_cache(host, flag : RecordFlag)
     return unless _cache = cache
 
     _cache.get host, flag
   end
 
-  def cache_expires?(host, flags : Array(Record::ResourceFlag))
-    expires = [] of Record::ResourceFlag
+  def cache_expires?(host, flags : Array(RecordFlag))
+    expires = [] of RecordFlag
     return expires unless _cache = cache
 
     flags.each do |flag|
@@ -298,9 +298,9 @@ class Durian::Resolver
     expires
   end
 
-  def fetch_cache(host, flags : Array(Record::ResourceFlag), resolve_response : ResolveResponse)
+  def fetch_cache(host, flags : Array(RecordFlag), resolve_response : ResolveResponse)
     flags = flags - cache_expires? host, flags
-    fetch = [] of Record::ResourceFlag
+    fetch = [] of RecordFlag
 
     flags.each do |flag|
       packet = fetch_raw_cache host, flag
@@ -315,7 +315,7 @@ class Durian::Resolver
   end
 
   def resolve_task(host : String, task : ResolveTask)
-    packets = [] of Tuple(String, Record::ResourceFlag, Packet::Response)
+    packets = [] of Tuple(String, RecordFlag, Packet::Response)
     flags, proc = task
 
     cache_fetch = fetch_cache host, flags, packets
@@ -336,12 +336,12 @@ class Durian::Resolver
     proc.call packets
   end
 
-  def resolve(host, flag : Record::ResourceFlag, &callback : ResolveResponse ->)
+  def resolve(host, flag : RecordFlag, &callback : ResolveResponse ->)
     tasks[host] = Hash(String, ResolveTask).new unless tasks[host]?
     tasks[host][random.hex] = Tuple.new [flag], callback
   end
 
-  def resolve(host, flags : Array(Record::ResourceFlag), &callback : ResolveResponse ->)
+  def resolve(host, flags : Array(RecordFlag), &callback : ResolveResponse ->)
     tasks[host] = Hash(String, ResolveTask).new unless tasks[host]?
     tasks[host][random.hex] = Tuple.new flags, callback
   end
