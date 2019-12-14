@@ -108,11 +108,11 @@ module Durian
   end
 
   def limit_length_buffer(io : IO) : IO::Memory
-    next_length = uninitialized UInt8[1_i32]
-    length = io.read next_length.to_slice
+    chunk_length = uninitialized UInt8[1_i32]
+    length = io.read chunk_length.to_slice
     return IO::Memory.new if 1_i32 != length
 
-    limit_length_buffer io, next_length.first
+    limit_length_buffer io, chunk_length.first
   end
 
   def self.limit_length_buffer(io : IO, length : Int)
@@ -127,11 +127,11 @@ module Durian
     temporary
   end
 
-  def self.encode_chunk_ipv4_address(address, io : IO)
-    return io.write_byte 0_u8 unless address
-    return io.write_byte 0_u8 if address.empty?
+  def self.encode_chunk_ipv4_address(ip_address, io : IO)
+    return io.write_byte 0_u8 unless ip_address
+    return io.write_byte 0_u8 if ip_address.empty?
 
-    parts = address.split "."
+    parts = ip_address.split "."
     parts.pop if parts.last.empty?
 
     parts.map do |part|
@@ -213,36 +213,36 @@ module Durian
   end
 
   def self.decode_address_by_pointer(io : IO, buffer : IO, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32, maximum_recursive : Int32 = 64_i32)
-    limiter = uninitialized UInt8[1_i32]
-    length = io.read limiter.to_slice
+    chunk_length = uninitialized UInt8[1_i32]
+    length = io.read chunk_length.to_slice
 
     return String.new if length.zero?
-    return String.new if limiter.first.zero?
+    return String.new if chunk_length.first.zero?
 
-    if limiter.first > buffer.size
+    if chunk_length.first > buffer.size
       return String.new
     end
 
-    decode_address_by_pointer buffer, limiter.first, recursive_depth, maximum_length, maximum_recursive
+    decode_address_by_pointer buffer, chunk_length.first, recursive_depth, maximum_length, maximum_recursive
   end
 
   def self.decode_address(io : IO, buffer : IO?, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32, maximum_recursive : Int32 = 64_i32)
-    limiter = uninitialized UInt8[1_i32]
+    chunk_length = uninitialized UInt8[1_i32]
     temporary = IO::Memory.new
 
     loop do
       break if recursive_depth == maximum_recursive - 1_i32 || maximum_length <= temporary.size
 
-      length = io.read limiter.to_slice
-      break if length.zero? || limiter.first.zero?
+      length = io.read chunk_length.to_slice
+      break if length.zero? || chunk_length.first.zero?
       buffer = io unless buffer
 
-      if 0b11000000 == limiter.first
+      if 0b11000000 == chunk_length.first
         break temporary << decode_address_by_pointer io, buffer,
           recursive_depth + 1_i32, maximum_length, maximum_recursive
       end
 
-      IO.copy io, temporary, limiter.first
+      IO.copy io, temporary, chunk_length.first
       temporary << "."
     end
 
@@ -272,25 +272,23 @@ module Durian
   end
 
   def self.parse_chunk_address(io : IO, buffer : IO, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32, maximum_recursive : Int32 = 64_i32)
-    limiter = uninitialized UInt8[1_i32]
+    chunk_length = uninitialized UInt8[1_i32]
     temporary = IO::Memory.new
     pointer_address_buffer = IO::Memory.new
     end_zero = false
 
     loop do
       break if maximum_length <= temporary.size
-
-      length = io.read limiter.to_slice
-      break unless length
+      break unless length = io.read chunk_length.to_slice
       break if length.zero?
-      break end_zero = true if limiter.first.zero?
+      break end_zero = true if chunk_length.first.zero?
 
-      if 0b11000000 == limiter.first
+      if 0b11000000 == chunk_length.first
         break pointer_address_buffer << decode_address_by_pointer io, buffer
       end
 
-      temporary.write limiter.to_slice
-      IO.copy io, temporary, limiter.first
+      temporary.write chunk_length.to_slice
+      IO.copy io, temporary, chunk_length.first
     end
 
     temporary.rewind
