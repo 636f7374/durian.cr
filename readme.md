@@ -1,4 +1,4 @@
-<div align = "center"><img src="images/icon.png" width="150" height="150" /></div>
+<div align = "center"><img src="images/icon.png" width="256" height="256" /></div>
 
 <div align = "center">
   <h1>Durian.cr - DNS Resolver</h1>
