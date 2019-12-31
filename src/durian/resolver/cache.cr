@@ -1,12 +1,12 @@
 class Durian::Resolver
   class Cache
     property collects : Hash(String, RecordKind)
-    property maximumSave : Int32
+    property capacity : Int32
     property cleanInterval : Time::Span
     property recordExpires : Time::Span
     property cleanAt : Time
 
-    def initialize(@collects = Hash(String, RecordKind).new, @maximumSave : Int32 = 256_i32,
+    def initialize(@collects = Hash(String, RecordKind).new, @capacity : Int32 = 256_i32,
                    @cleanInterval : Time::Span = 3600_i32.seconds, @recordExpires : Time::Span = 3600_i32.seconds)
       @cleanAt = Time.local
     end
@@ -20,7 +20,7 @@ class Durian::Resolver
     end
 
     def full?
-      size == maximumSave
+      size == capacity
     end
 
     def clean_expires?
@@ -96,7 +96,7 @@ class Durian::Resolver
     end
 
     def default_maximum_clean
-      maximumSave / 2_i32
+      capacity / 2_i32
     end
 
     def size
