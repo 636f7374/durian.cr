@@ -1,9 +1,7 @@
 class Durian::TCPSocket < TCPSocket
-  alias Cache = Durian::Resolver::Cache::IPAddress
-
-  def initialize(host : String, port : Int32, resolver : Durian::Resolver, connect_timeout : Int32? = nil,
-                 retry : Bool = true, retry_timeout : Int32 = 1_i32,
-                 retry_ipv4 : Int32 = 2_i32, retry_ipv6 : Int32 = 2_i32)
+  def initialize(host : String, port : Int32, resolver : Durian::Resolver, connect_timeout : Int | Float? = nil,
+                 retry : Bool = true, retry_timeout : Int | Float = 1_i32,
+                 retry_ipv4 : Int | Float = 2_i32, retry_ipv6 : Int | Float = 2_i32)
     Durian::Resolver.getaddrinfo host, port, resolver do |list|
       raise Socket::Error.new "Invalid host address" if list.empty?
 
@@ -22,8 +20,9 @@ class Durian::TCPSocket < TCPSocket
     end
   end
 
-  def self.try_connect_ip_address(list : Array(Socket::IPAddress), retry_timeout : Int32 = 1_i32,
-                                  maximum_retry_ipv4 : Int32 = 2_i32, maximum_retry_ipv6 : Int32 = 2_i32) : Socket::IPAddress?
+  def self.try_connect_ip_address(list : Array(Socket::IPAddress), retry_timeout : Int | Float = 1_i32,
+                                  maximum_retry_ipv4 : Int | Float = 2_i32,
+                                  maximum_retry_ipv6 : Int | Float = 2_i32) : Socket::IPAddress?
     retry_ipv4 = 0_i32
     retry_ipv6 = 0_i32
 
