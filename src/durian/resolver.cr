@@ -109,11 +109,10 @@ class Durian::Resolver
 
   def resolve_by_flag!(host : String, flag : RecordFlag)
     dnsServers.each do |server|
-      socket = Network.create_client server,
-        read_timeout, write_timeout, connect_timeout rescue nil
+      socket = Network.create_client server, read_timeout, write_timeout, connect_timeout rescue nil
       next unless socket
-      packet = resolve_by_flag! socket, host, flag rescue nil
-      next unless packet
+
+      next socket.close unless packet = resolve_by_flag! socket, host, flag rescue nil
 
       socket.close
       break packet
