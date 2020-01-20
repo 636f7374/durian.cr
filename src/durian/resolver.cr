@@ -119,10 +119,20 @@ class Durian::Resolver
     end
   end
 
+  def get_socket_protocol(socket : NetworkClient)
+    case socket
+    when Network::TCPClient
+      Protocol::TCP
+    when Network::UDPClient
+      Protocol::UDP
+    end
+  end
+
   def resolve_by_flag!(socket : NetworkClient, host : String, flag : RecordFlag) : Packet::Response?
     buffer = uninitialized UInt8[4096_i32]
 
-    request = Packet::Request.new
+    protocol = get_socket_protocol(socket) || Protocol::UDP
+    request = Packet::Request.new protocol
     request.add_query host, flag
     socket.send request.to_slice
 
@@ -131,7 +141,7 @@ class Durian::Resolver
       length = 0_i32 unless length
 
       io = IO::Memory.new buffer.to_slice[0_i32, length]
-      response = Packet::Response.from_io io
+      response = Packet::Response.from_io io, protocol
       io.close
 
       unless response

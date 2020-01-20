@@ -2,6 +2,7 @@ require "../section.cr"
 
 module Durian::Packet
   class Request
+    property protocol : Protocol
     property queries : Array(Section::Question)
     property transId : UInt16?
     property operationCode : OperationCode
@@ -12,7 +13,7 @@ module Durian::Packet
     property buffer : IO::Memory?
     property random : Random
 
-    def initialize
+    def initialize(@protocol : Protocol = Protocol::UDP)
       @queries = [] of Section::Question
       @transId = nil
       @operationCode = OperationCode::StandardQuery
@@ -74,16 +75,21 @@ module Durian::Packet
       buffer.write_bytes additional_count, IO::ByteFormat::BigEndian
     end
 
-    def self.from_io(io : IO, buffer : IO::Memory = IO::Memory.new, sync_buffer_close : Bool = true)
-      from_io! io, buffer, sync_buffer_close rescue nil
+    def self.from_io(io : IO, protocol : Protocol = Protocol::UDP,
+                     buffer : IO::Memory = IO::Memory.new, sync_buffer_close : Bool = true)
+      from_io! io, protocol, buffer, sync_buffer_close rescue nil
     end
 
-    def self.from_io!(io : IO, buffer : IO::Memory = IO::Memory.new, sync_buffer_close : Bool = true)
+    def self.from_io!(io : IO, protocol : Protocol = Protocol::UDP,
+                      buffer : IO::Memory = IO::Memory.new, sync_buffer_close : Bool = true)
       request = new
       bad_decode = false
 
       begin
+        length = io.read_bytes UInt16, IO::ByteFormat::BigEndian if protocol.tcp?
         trans_id = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+
+        buffer.write_bytes length, IO::ByteFormat::BigEndian if length
         buffer.write_bytes trans_id, IO::ByteFormat::BigEndian
       rescue ex
         raise MalformedPacket.new ex.message
@@ -109,6 +115,19 @@ module Durian::Packet
       io.to_slice
     end
 
+    def to_io(io : IO)
+      case protocol
+      when .udp?
+        to_udp_io io
+      when .tcp?
+        temporary = IO::Memory.new
+        to_udp_io temporary
+        length = temporary.size.to_u16
+        io.write_bytes length, IO::ByteFormat::BigEndian
+        io.write temporary.to_slice
+      end
+    end
+
     # Request
     # DNS QUERY MESSAGE FORMAT: http://www.firewall.cx/networking-topics/protocols/domain-name-system-dns/160-protocols-dns-query.html
     # Protocol and Format: http://www-inf.int-evry.fr/~hennequi/CoursDNS/NOTES-COURS_eng/msg.html
@@ -116,7 +135,7 @@ module Durian::Packet
     # Numbers: http://www.oualline.com/practical.programmer/numbers.html
     # DNS Query Code in C with linux sockets: https://gist.github.com/fffaraz/9d9170b57791c28ccda9255b48315168
 
-    def to_io(io : IO)
+    def to_udp_io(io : IO)
       # Identification field is used to match up replies and requests.
       @transId = random.rand UInt16 unless transId
       if _trans_id = transId

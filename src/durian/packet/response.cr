@@ -1,5 +1,6 @@
 module Durian::Packet
   class Response
+    property protocol : Protocol
     property queries : Array(Section::Question)
     property answers : Array(Section::Answer)
     property authority : Array(Section::Authority)
@@ -20,7 +21,7 @@ module Durian::Packet
     property buffer : IO::Memory?
     property random : Random
 
-    def initialize
+    def initialize(@protocol : Protocol = Protocol::UDP)
       @queries = [] of Section::Question
       @answers = [] of Section::Answer
       @authority = [] of Section::Authority
@@ -79,16 +80,21 @@ module Durian::Packet
       buffer.write_bytes response.additionalCount, IO::ByteFormat::BigEndian
     end
 
-    def self.from_io(io : IO, buffer : IO::Memory = IO::Memory.new, sync_buffer_close : Bool = true)
-      from_io! io, buffer, sync_buffer_close rescue nil
+    def self.from_io(io : IO, protocol : Protocol = Protocol::UDP,
+                     buffer : IO::Memory = IO::Memory.new, sync_buffer_close : Bool = true)
+      from_io! io, protocol, buffer, sync_buffer_close rescue nil
     end
 
-    def self.from_io!(io : IO, buffer : IO::Memory = IO::Memory.new, sync_buffer_close : Bool = true)
+    def self.from_io!(io : IO, protocol : Protocol = Protocol::UDP,
+                      buffer : IO::Memory = IO::Memory.new, sync_buffer_close : Bool = true)
       response = new
       bad_decode = false
 
       begin
+        length = io.read_bytes UInt16, IO::ByteFormat::BigEndian if protocol.tcp?
         trans_id = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+
+        buffer.write_bytes length, IO::ByteFormat::BigEndian if length
         buffer.write_bytes trans_id, IO::ByteFormat::BigEndian
       rescue ex
         raise MalformedPacket.new ex.message
