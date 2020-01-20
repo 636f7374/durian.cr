@@ -89,7 +89,6 @@ module Durian::Packet
         length = io.read_bytes UInt16, IO::ByteFormat::BigEndian if protocol.tcp?
         trans_id = io.read_bytes UInt16, IO::ByteFormat::BigEndian
 
-        buffer.write_bytes length, IO::ByteFormat::BigEndian if length
         buffer.write_bytes trans_id, IO::ByteFormat::BigEndian
       rescue ex
         raise MalformedPacket.new ex.message
