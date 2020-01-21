@@ -9,62 +9,16 @@ class Durian::Resolver
   property dnsServers : Array(Tuple(Socket::IPAddress, Protocol))
   property random : Random
   property tasks : Hash(String, Hash(String, ResolveTask))
+  property option : Option
 
   def initialize(@dnsServers : Array(Tuple(Socket::IPAddress, Protocol)))
     @random = Random.new
     @tasks = Hash(String, Hash(String, ResolveTask)).new
+    @option = Option.new
   end
 
   def self.new(dnsServer : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32), protocol : Protocol = Protocol::UDP)
     new [Tuple.new dnsServer, protocol]
-  end
-
-  def read_timeout=(value : Int32)
-    @read_timeout = value.seconds
-  end
-
-  def read_timeout=(value : Time::Span)
-    @read_timeout = value
-  end
-
-  def read_timeout
-    @read_timeout || default_read_timeout
-  end
-
-  def default_read_timeout
-    2_i32.seconds
-  end
-
-  def write_timeout=(value : Int32)
-    @write_timeout = value.seconds
-  end
-
-  def write_timeout=(value : Time::Span)
-    @write_timeout = value
-  end
-
-  def write_timeout
-    @write_timeout || default_write_timeout
-  end
-
-  def default_write_timeout
-    2_i32.seconds
-  end
-
-  def connect_timeout=(value : Int32)
-    @connect_timeout = value.seconds
-  end
-
-  def connect_timeout=(value : Time::Span)
-    @connect_timeout = value
-  end
-
-  def connect_timeout
-    @connect_timeout || default_connect_timeout
-  end
-
-  def default_connect_timeout
-    5_i32.seconds
   end
 
   def cache=(value : Cache)
@@ -75,14 +29,6 @@ class Durian::Resolver
     @cache
   end
 
-  def ip_cache(value : Cache::IPAddress)
-    @ip_cache = value
-  end
-
-  def ip_cache
-    @ip_cache
-  end
-
   def ip_cache=(value : Cache::IPAddress)
     @ip_cache = value
   end
@@ -91,28 +37,13 @@ class Durian::Resolver
     @ip_cache
   end
 
-  def mismatch_retry_count=(value : Int32)
-    @mismatchRetryCount = value
-  end
-
-  def mismatch_retry_count
-    @mismatchRetryCount || default_mismatch_retry_count
-  end
-
-  def default_mismatch_retry_count
-    5_i32
-  end
-
-  def refresh
-    @cleanAt = Time.local
-  end
-
   def resolve_by_flag!(host : String, flag : RecordFlag)
     dnsServers.each do |server|
-      socket = Network.create_client server, read_timeout, write_timeout, connect_timeout rescue nil
+      socket = Network.create_client server, option.timeout rescue nil
       next unless socket
 
-      next socket.close unless packet = resolve_by_flag! socket, host, flag rescue nil
+      packet = resolve_by_flag! socket, host, flag rescue nil
+      next socket.close unless packet
 
       socket.close
       break packet
@@ -136,7 +67,7 @@ class Durian::Resolver
     request.add_query host, flag
     socket.send request.to_slice
 
-    mismatch_retry_count.times do
+    option.mismatchRetryTimes.times do
       length, address = socket.receive buffer.to_slice
       length = 0_i32 unless length
 
@@ -155,18 +86,14 @@ class Durian::Resolver
 
   private def self.extract_canonical_name_ip_address(host : String, alias_server : AliasServer,
                                                      list : Array(Socket::IPAddress))
-    _alias = alias_server[host]?
-    return unless _alias
+    return unless _alias = alias_server[host]?
 
     loop do
-      _next = alias_server[_alias]?
-      break unless _next
+      break unless _next = alias_server[_alias]?
       next _alias = _next if _next.is_a? String
 
       if _next.is_a? Array(Socket::IPAddress)
-        break _next.each do |data|
-          list << data
-        end
+        break _next.each { |data| list << data }
       end
     end
   end
@@ -269,13 +196,15 @@ class Durian::Resolver
     from_ip_cache = fetch_ip_cache host, port, resolver.ip_cache
     return from_ip_cache unless from_ip_cache.empty? if from_ip_cache
 
-    resolver.resolve_task host, Tuple.new IPAddressRecordFlags, ->(resolve_response : ResolveResponse) do
+    record_flags = [RecordFlag::A]
+    record_flags = IPAddressRecordFlags if resolver.option.addrinfo.withIpv6
+
+    resolver.resolve_task host, Tuple.new record_flags, ->(resolve_response : ResolveResponse) do
       extract_all_ip_address host, port, resolve_response, list
     end
 
-    if ip_cache = resolver.ip_cache
-      ip_cache.set host, list unless list.empty?
-    end
+    ip_cache = resolver.ip_cache
+    ip_cache.set host, list unless list.empty? if ip_cache
 
     list
   end

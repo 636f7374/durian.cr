@@ -1,1 +1,2 @@
+require "yaml"
 require "./durian/*"

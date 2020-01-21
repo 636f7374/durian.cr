@@ -22,8 +22,11 @@ class Durian::Resolver
       2_i32.seconds
     end
 
-    def self.create_client(server : Tuple(Socket::IPAddress, Protocol), read_timeout : Time::Span = 5_i32.seconds,
-                           write_timeout : Time::Span = 5_i32.seconds, connect_timeout : Time::Span = 5_i32.seconds)
+    def self.create_client(server : Tuple(Socket::IPAddress, Protocol), timeout : Option::TimeOut)
+      read_timeout = timeout.read.seconds
+      write_timeout = timeout.write.seconds
+      connect_timeout = timeout.connect.seconds
+
       create_client server.first, server.last, read_timeout, write_timeout, connect_timeout
     end
 

@@ -5,10 +5,12 @@ class Durian::Resolver
     property cleanInterval : Time::Span
     property recordExpires : Time::Span
     property cleanAt : Time
+    property maximumCleanup : Int32
 
     def initialize(@collects = Hash(String, RecordKind).new, @capacity : Int32 = 256_i32,
-                   @cleanInterval : Time::Span = 3600_i32.seconds, @recordExpires : Time::Span = 3600_i32.seconds)
+                   @cleanInterval : Time::Span = 3600_i32.seconds, @recordExpires : Time::Span = 1800_i32.seconds)
       @cleanAt = Time.local
+      @maximumCleanup = (capacity / 2_i32).to_i32
     end
 
     def insert(name : String)
@@ -87,18 +89,6 @@ class Durian::Resolver
       item.packet = packet
     end
 
-    def maximum_clean=(value : Int32)
-      @maximumClean = value
-    end
-
-    def maximum_clean
-      @maximumClean || default_maximum_clean
-    end
-
-    def default_maximum_clean
-      capacity / 2_i32
-    end
-
     def size
       collects.size
     end
@@ -126,7 +116,7 @@ class Durian::Resolver
       	_collects = [] of Tuple(Int32, String)
       {% end %}
 
-      _maximum_clean = maximum_clean - 1_i32
+      _maximum = maximumCleanup - 1_i32
 
       collects.each do |name, item|
       	{% if name.id == "access_at" %}
@@ -141,7 +131,7 @@ class Durian::Resolver
       end
 
       _sort.each_with_index do |sort, index|
-        break if index > _maximum_clean
+        break if index > _maximum
         collects.delete sort.last
       end
 
