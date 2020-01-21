@@ -192,8 +192,8 @@ class Durian::Resolver
               alias_server[from] = Array(Socket::IPAddress).new
             end
 
-            if alias_server[from].is_a? Array(Socket::IPAddress)
-              alias_server[from].as Array(Socket::IPAddress) << _ip_address
+            if alias_list = alias_server[from]?
+              alias_list << _ip_address if alias_list.is_a? Array(Socket::IPAddress)
             end
           end
         when Record::A
@@ -206,8 +206,8 @@ class Durian::Resolver
               alias_server[from] = Array(Socket::IPAddress).new
             end
 
-            if alias_server[from].is_a? Array(Socket::IPAddress)
-              alias_server[from].as Array(Socket::IPAddress) << _ip_address
+            if alias_list = alias_server[from]?
+              alias_list << _ip_address if alias_list.is_a? Array(Socket::IPAddress)
             end
           end
         when Record::CNAME

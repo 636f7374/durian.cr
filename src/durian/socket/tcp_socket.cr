@@ -24,6 +24,8 @@ class Durian::TCPSocket < TCPSocket
                                   maximum_retry_ipv4 : Int | Float = 4_i32,
                                   maximum_retry_ipv6 : Int | Float = 4_i32) : Socket::IPAddress?
     timeout = retry_timeout / list.size
+    timeout = 1_i32 if timeout < 1_i32
+
     retry_ipv4 = 0_i32
     retry_ipv6 = 0_i32
 
@@ -39,9 +41,7 @@ class Durian::TCPSocket < TCPSocket
         retry_ipv4 = retry_ipv4 + 1_i32
       end
 
-      timeout = 1_i32 if timeout < 1_i32
-
-      socket = ::TCPSocket.new address, retry_timeout / 4_i32, retry_timeout rescue nil
+      socket = ::TCPSocket.new address, timeout, timeout rescue nil
       next unless socket
 
       if socket

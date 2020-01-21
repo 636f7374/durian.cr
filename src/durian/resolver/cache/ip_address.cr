@@ -59,6 +59,7 @@ class Durian::Resolver
 
     def expires?(name : String)
       return unless item = collects[name]?
+      return true if item.ipAddress.empty?
 
       (Time.local - item.accessAt) > recordExpires
     end
@@ -67,13 +68,13 @@ class Durian::Resolver
       return unless item = collects[name]?
 
       item.refresh ensure item.tap
-
       address = [] of Socket::IPAddress
 
       item.ipAddress.each do |ip_address|
         address << Socket::IPAddress.new ip_address.address, port
       end
 
+      return if address.empty?
       address
     end
 
@@ -89,6 +90,7 @@ class Durian::Resolver
     end
 
     def set(name : String, ip_address : Array(Socket::IPAddress))
+      return if ip_address.empty?
       inactive_clean
 
       insert name, ip_address unless item = collects[name]?

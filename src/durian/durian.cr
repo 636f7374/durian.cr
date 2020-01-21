@@ -110,13 +110,13 @@ module Durian
   def limit_length_buffer(io : IO) : IO::Memory
     chunk_length = uninitialized UInt8[1_i32]
     length = io.read chunk_length.to_slice
-    return IO::Memory.new if 1_i32 != length
+    return IO::Memory.new 0_i32 if 1_i32 != length
 
     limit_length_buffer io, chunk_length.first
   end
 
   def self.limit_length_buffer(io : IO, length : Int)
-    limit_length_buffer! io, length rescue IO::Memory.new
+    limit_length_buffer! io, length rescue IO::Memory.new 0_i32
   end
 
   def self.limit_length_buffer!(io : IO, length : Int)
