@@ -159,24 +159,24 @@ class Durian::Resolver
   def self.getaddrinfo(host : String, port : Int32, ip_cache : Cache::IPAddress? = nil,
                        dnsServer : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32),
                        protocol : Protocol = Protocol::UDP,
-                       &block : Array(Socket::IPAddress) ->)
+                       &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
     yield getaddrinfo host, port, ip_cache, [Tuple.new dnsServer, protocol]
   end
 
   def self.getaddrinfo(host : String, port : Int32, ip_cache : Cache::IPAddress? = nil,
                        dnsServer : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32),
-                       protocol : Protocol = Protocol::UDP) : Array(Socket::IPAddress)
+                       protocol : Protocol = Protocol::UDP) : Tuple(Fetch, Array(Socket::IPAddress))
     getaddrinfo host, port, ip_cache, [Tuple.new dnsServer, protocol]
   end
 
   def self.getaddrinfo(host : String, port : Int32, ip_cache : Cache::IPAddress?,
                        dnsServers : Array(Tuple(Socket::IPAddress, Protocol)),
-                       &block : Array(Socket::IPAddress) ->)
+                       &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
     yield getaddrinfo host, port, ip_cache, dnsServers
   end
 
   def self.getaddrinfo(host : String, port : Int32, ip_cache : Cache::IPAddress?,
-                       dnsServers : Array(Tuple(Socket::IPAddress, Protocol))) : Array(Socket::IPAddress)
+                       dnsServers : Array(Tuple(Socket::IPAddress, Protocol))) : Tuple(Fetch, Array(Socket::IPAddress))
     resolver = new dnsServers
     resolver.ip_cache = ip_cache if ip_cache
 
@@ -184,17 +184,17 @@ class Durian::Resolver
   end
 
   def self.getaddrinfo(host : String, port : Int32, resolver : Resolver,
-                       &block : Array(Socket::IPAddress) ->)
+                       &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
     yield getaddrinfo host, port, resolver
   end
 
-  def self.getaddrinfo(host : String, port : Int32, resolver : Resolver) : Array(Socket::IPAddress)
+  def self.getaddrinfo(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Array(Socket::IPAddress))
     list = [] of Socket::IPAddress
     list << Socket::IPAddress.new host, port rescue nil
-    return list unless list.empty?
+    return Tuple.new Fetch::Local, list unless list.empty?
 
     from_ip_cache = fetch_ip_cache host, port, resolver.ip_cache
-    return from_ip_cache unless from_ip_cache.empty? if from_ip_cache
+    return Tuple.new Fetch::Cache, from_ip_cache unless from_ip_cache.empty? if from_ip_cache
 
     record_flags = [RecordFlag::A]
     record_flags = IPAddressRecordFlags if resolver.option.addrinfo.withIpv6
@@ -206,7 +206,7 @@ class Durian::Resolver
     ip_cache = resolver.ip_cache
     ip_cache.set host, list unless list.empty? if ip_cache
 
-    list
+    Tuple.new Fetch::Remote, list
   end
 
   def to_ip_address(host : String)

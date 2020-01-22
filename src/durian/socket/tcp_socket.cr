@@ -2,22 +2,21 @@ class Durian::TCPSocket < TCPSocket
   def initialize(host : String, port : Int32, resolver : Durian::Resolver, connect_timeout : Int | Float? = nil,
                  retry : Bool = true, retry_timeout : Int | Float = 1_i32,
                  retry_ipv4 : Int | Float = 2_i32, retry_ipv6 : Int | Float = 2_i32)
-    Durian::Resolver.getaddrinfo host, port, resolver do |list|
-      raise Socket::Error.new "Invalid host address" if list.empty?
+    method, list = Durian::Resolver.getaddrinfo host, port, resolver
+    raise Socket::Error.new "Invalid host address" if list.empty?
 
-      if 1_i32 == list.size || false == retry
-        return super list.first, connect_timeout, connect_timeout
-      end
-
-      ip_address = TCPSocket.try_connect_ip_address list, retry_timeout, retry_ipv4, retry_ipv6
-      raise Socket::Error.new "IP address cannot connect" unless ip_address
-
-      if ip_cache = resolver.ip_cache
-        ip_cache.set host, ip_address
-      end
-
-      super ip_address, connect_timeout, connect_timeout
+    if 1_i32 == list.size || false == retry
+      return super list.first, connect_timeout, connect_timeout
     end
+
+    ip_address = TCPSocket.try_connect_ip_address list, retry_timeout, retry_ipv4, retry_ipv6
+    raise Socket::Error.new "IP address cannot connect" unless ip_address
+
+    if ip_cache = resolver.ip_cache
+      ip_cache.set host, ip_address
+    end
+
+    super ip_address, connect_timeout, connect_timeout
   end
 
   def self.try_connect_ip_address(list : Array(Socket::IPAddress), retry_timeout : Int | Float = 1_i32,

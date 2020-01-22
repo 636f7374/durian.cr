@@ -6,6 +6,12 @@ module Durian
     TCP
   end
 
+  enum Fetch
+    Local
+    Cache
+    Remote
+  end
+
   enum RecordFlag
     # Pseudo Record Types
     ANY  = 255_i32
