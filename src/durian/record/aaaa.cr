@@ -2,6 +2,7 @@ class Durian::Record::AAAA < Durian::Record
   property ipv6Address : String
 
   def initialize(@ipv6Address : String = String.new, @cls : Cls = Cls::IN, @ttl : UInt32 = 0_u32, @from : String? = nil)
+    @flag = RecordFlag::AAAA
   end
 
   {% for name in ["authority", "answer", "additional"] %}

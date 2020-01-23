@@ -1,8 +1,10 @@
+require "./resolver/*"
+
 class Durian::Resolver
   IPAddressRecordFlags = [RecordFlag::A, RecordFlag::AAAA]
 
   alias ResolveResponse = Array(Tuple(String, RecordFlag, Packet::Response))
-  alias ResolveTask = Tuple(Array(RecordFlag), Proc(ResolveResponse, Nil))
+  alias ResolveTask = Tuple(Array(RecordFlag), Bool, Proc(ResolveResponse, Nil))
   alias NetworkClient = Network::TCPClient | Network::UDPClient
   alias AliasServer = Hash(String, String | Array(Socket::IPAddress))
 
@@ -37,13 +39,25 @@ class Durian::Resolver
     @ip_cache
   end
 
-  def resolve_by_flag!(host : String, flag : RecordFlag)
+  def resolve_by_flag!(host : String, flag : RecordFlag, strict_answer : Bool = false) : Packet::Response?
     dnsServers.each do |server|
       socket = Network.create_client server, option.timeout rescue nil
       next unless socket
 
       packet = resolve_by_flag! socket, host, flag rescue nil
+
       next socket.close unless packet
+      next socket.close if packet.answerCount.zero? || packet.answers.empty?
+
+      if strict_answer
+        include_flag = false
+
+        packet.answers.each do |answer|
+          break include_flag = true if answer.flag == flag
+        end
+
+        next socket.close unless include_flag
+      end
 
       socket.close
       break packet
@@ -59,7 +73,8 @@ class Durian::Resolver
     end
   end
 
-  def resolve_by_flag!(socket : NetworkClient, host : String, flag : RecordFlag) : Packet::Response?
+  def resolve_by_flag!(socket : NetworkClient, host : String,
+                       flag : RecordFlag, strict_answer : Bool = false) : Packet::Response?
     buffer = uninitialized UInt8[4096_i32]
 
     protocol = get_socket_protocol(socket) || Protocol::UDP
@@ -199,7 +214,7 @@ class Durian::Resolver
     record_flags = [RecordFlag::A]
     record_flags = IPAddressRecordFlags if resolver.option.addrinfo.withIpv6
 
-    resolver.resolve_task host, Tuple.new record_flags, ->(resolve_response : ResolveResponse) do
+    resolver.resolve_task host, Tuple.new record_flags, true, ->(resolve_response : ResolveResponse) do
       extract_all_ip_address host, port, resolve_response, list
     end
 
@@ -254,7 +269,7 @@ class Durian::Resolver
 
   def resolve_task(host : String, task : ResolveTask)
     packets = [] of Tuple(String, RecordFlag, Packet::Response)
-    flags, proc = task
+    flags, strict_answer, proc = task
 
     cache_fetch = fetch_cache host, flags, packets
     return proc.call packets if cache_fetch.size == flags.size
@@ -265,7 +280,7 @@ class Durian::Resolver
     flags.each do |flag|
       next if cache_fetch.includes? flag
       next if ip_address && IPAddressRecordFlags.includes? flag
-      next unless packet = resolve_by_flag! host, flag
+      next unless packet = resolve_by_flag! host, flag, strict_answer
 
       packets << Tuple.new host, flag, packet
       set_cache host, packet, flag
@@ -274,21 +289,21 @@ class Durian::Resolver
     proc.call packets
   end
 
-  def resolve(host, flag : RecordFlag, &callback : ResolveResponse ->)
+  def resolve(host, flag : RecordFlag, strict_answer : Bool = false, &callback : ResolveResponse ->)
     tasks[host] = Hash(String, ResolveTask).new unless tasks[host]?
-    tasks[host][random.hex] = Tuple.new [flag], callback
+    tasks[host][random.hex] = Tuple.new [flag], strict_answer, callback
   end
 
-  def resolve(host, flags : Array(RecordFlag), &callback : ResolveResponse ->)
+  def resolve(host, flags : Array(RecordFlag), strict_answer : Bool = false, &callback : ResolveResponse ->)
     tasks[host] = Hash(String, ResolveTask).new unless tasks[host]?
-    tasks[host][random.hex] = Tuple.new flags, callback
+    tasks[host][random.hex] = Tuple.new flags, strict_answer, callback
   end
 
   private def handle_task(channel : Channel(Nil), host : String,
                           task : Hash(String, ResolveTask))
-    task.each do |id, sub_task|
+    task.each do |id, item|
       spawn do
-        resolve_task host, sub_task
+        resolve_task host, item
         task.delete id
       ensure
         channel.send nil
@@ -315,5 +330,3 @@ class Durian::Resolver
     channel.close
   end
 end
-
-require "./resolver/*"

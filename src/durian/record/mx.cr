@@ -3,6 +3,7 @@ class Durian::Record::MX < Durian::Record
   property preference : UInt16
 
   def initialize(@mailExchange : String = String.new, @cls : Cls = Cls::IN, @ttl : UInt32 = 0_u32, @from : String? = nil)
+    @flag = RecordFlag::MX
     @preference = 0_u32
   end
 

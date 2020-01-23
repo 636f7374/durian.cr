@@ -18,6 +18,10 @@ module Durian::Section
       @resourceRecord.ttl
     end
 
+    def flag
+      @resourceRecord.flag
+    end
+
     def self.decode(io : IO, buffer : IO)
       from = Section.decode_resource_pointer io, buffer
 

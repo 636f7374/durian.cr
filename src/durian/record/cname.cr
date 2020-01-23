@@ -2,6 +2,7 @@ class Durian::Record::CNAME < Durian::Record
   property canonicalName : String
 
   def initialize(@canonicalName : String = String.new, @cls : Cls = Cls::IN, @ttl : UInt32 = 0_u32, @from : String? = nil)
+    @flag = RecordFlag::CNAME
   end
 
   {% for name in ["authority", "answer", "additional"] %}

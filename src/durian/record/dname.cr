@@ -1,16 +1,16 @@
-class Durian::Record::NS < Durian::Record
-  property nameServer : String
+class Durian::Record::DNAME < Durian::Record
+  property delegationName : String
 
-  def initialize(@nameServer : String = String.new, @cls : Cls = Cls::IN, @ttl : UInt32 = 0_u32, @from : String? = nil)
-    @flag = RecordFlag::NS
+  def initialize(@delegationName : String = String.new, @cls : Cls = Cls::IN, @ttl : UInt32 = 0_u32, @from : String? = nil)
+    @flag = RecordFlag::DNAME
   end
 
   {% for name in ["authority", "answer", "additional"] %}
-  def self.{{name.id}}_from_io?(resource_record : NS, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
+  def self.{{name.id}}_from_io?(resource_record : DNAME, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
     data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
     buffer.write_bytes data_length, IO::ByteFormat::BigEndian
 
-    resource_record.nameServer = address_from_io? io, data_length, buffer, maximum_length
+    resource_record.delegationName = address_from_io? io, data_length, buffer, maximum_length
   end
   {% end %}
 
