@@ -38,6 +38,7 @@
   * TXT
   * MX
   * CNAME
+  * DNAME
 * It supports TCP and UDP protocols DNS server.
 * It does not contain any `C.getaddrinfo`.
 * It supports simple DNS caching (non-LRUCache).
