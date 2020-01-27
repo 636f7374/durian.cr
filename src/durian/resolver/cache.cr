@@ -87,6 +87,7 @@ class Durian::Resolver
       return unless item = kind.force_fetch flag
 
       item.packet = packet
+      item.refresh
     end
 
     def size
@@ -221,11 +222,6 @@ class Durian::Resolver
 
         def refresh
           @updateAt = Time.local
-        end
-
-        def packet=(value : Durian::Packet::Response)
-          @packet = value
-          refresh
         end
       end
     end

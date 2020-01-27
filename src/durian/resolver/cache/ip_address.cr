@@ -99,6 +99,7 @@ class Durian::Resolver
       return unless item = collects[name]?
 
       item.ipAddress = ip_address
+      item.refresh
     end
 
     def size

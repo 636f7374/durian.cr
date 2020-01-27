@@ -12,9 +12,8 @@ class Durian::TCPSocket < TCPSocket
     ip_address = TCPSocket.try_connect_ip_address list, retry_timeout, retry_ipv4, retry_ipv6
     raise Socket::Error.new "IP address cannot connect" unless ip_address
 
-    if ip_cache = resolver.ip_cache
-      ip_cache.set host, ip_address
-    end
+    ip_cache = resolver.ip_cache
+    ip_cache.set host, ip_address if ip_cache
 
     super ip_address, connect_timeout, connect_timeout
   end
