@@ -88,6 +88,7 @@ module Durian::Packet
     def self.from_io!(io : IO, protocol : Protocol = Protocol::UDP,
                       buffer : IO::Memory = IO::Memory.new, sync_buffer_close : Bool = true)
       response = new
+      response.protocol = protocol
       bad_decode = false
 
       begin

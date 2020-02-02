@@ -35,12 +35,6 @@ class Durian::Record::SOA < Durian::Record
       resource_record.retryInterval = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
       resource_record.expireLimit = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
       resource_record.minimiumTimeToLive = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
-
-      buffer.write_bytes resource_record.serialNumber, IO::ByteFormat::BigEndian
-      buffer.write_bytes resource_record.refreshInterval, IO::ByteFormat::BigEndian
-      buffer.write_bytes resource_record.retryInterval, IO::ByteFormat::BigEndian
-      buffer.write_bytes resource_record.expireLimit, IO::ByteFormat::BigEndian
-      buffer.write_bytes resource_record.minimiumTimeToLive, IO::ByteFormat::BigEndian
     rescue ex
       data_buffer.close ensure raise ex
     end

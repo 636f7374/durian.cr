@@ -244,8 +244,7 @@ module Durian
       buffer = io unless buffer
 
       if 0b11000000 == chunk_length.first
-        break temporary << decode_address_by_pointer io, buffer,
-          recursive_depth + 1_i32, maximum_length, maximum_recursive
+        break temporary << decode_address_by_pointer io, buffer, recursive_depth + 1_i32, maximum_length, maximum_recursive
       end
 
       IO.copy io, temporary, chunk_length.first
