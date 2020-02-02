@@ -1,20 +1,21 @@
 class Durian::Resolver
   class Cache
-    property collects : Hash(String, RecordKind)
+    property collects : Immutable::Map(String, RecordKind)
     property capacity : Int32
     property cleanInterval : Time::Span
     property recordExpires : Time::Span
     property cleanAt : Time
     property maximumCleanup : Int32
 
-    def initialize(@collects = Hash(String, RecordKind).new, @capacity : Int32 = 256_i32,
+    def initialize(@collects = Immutable::Map(String, RecordKind).new, @capacity : Int32 = 256_i32,
                    @cleanInterval : Time::Span = 3600_i32.seconds, @recordExpires : Time::Span = 1800_i32.seconds)
       @cleanAt = Time.local
       @maximumCleanup = (capacity / 2_i32).to_i32
     end
 
     def insert(name : String)
-      collects[name] = RecordKind.new
+      insert = collects.set name, RecordKind.new
+      @collects = insert
     end
 
     def refresh
@@ -30,11 +31,11 @@ class Durian::Resolver
     end
 
     def reset
-      collects.clear
+      @collects = collects.clear
     end
 
     def []=(name, value : RecordKind)
-      collects[name] = value
+      set name, value
     end
 
     def [](name : String)
@@ -78,9 +79,11 @@ class Durian::Resolver
       inactive_clean
 
       insert name unless collects[name]?
-      return unless kind = collects[name]?
+      return unless _collects = collects
+      return unless kind = _collects[name]?
 
       set kind, packet, flag
+      @collects = _collects
     end
 
     private def set(kind : RecordKind, packet : Durian::Packet::Response, flag : Durian::RecordFlag)
@@ -112,31 +115,34 @@ class Durian::Resolver
     {% for name in ["tap", "access_at"] %}
     private def clean_by_{{name.id}}
       {% if name.id == "access_at" %}
-      	_collects = [] of Tuple(Time, String)
+      	temporary = [] of Tuple(Time, String)
       {% elsif name.id == "tap" %}
-      	_collects = [] of Tuple(Int32, String)
+      	temporary = [] of Tuple(Int32, String)
       {% end %}
 
       _maximum = maximumCleanup - 1_i32
+      _collects = collects
+
 
       collects.each do |name, item|
       	{% if name.id == "access_at" %}
-          _collects << Tuple.new item.accessAt, name
+          temporary << Tuple.new item.accessAt, name
       	{% elsif name.id == "tap" %}
-      	  _collects << Tuple.new item.tapCount, name
+      	  temporary << Tuple.new item.tapCount, name
       	{% end %}
       end
 
-      _sort = _collects.sort do |x, y|
+      _sort = temporary.sort do |x, y|
         x.first <=> y.first
       end
 
       _sort.each_with_index do |sort, index|
         break if index > _maximum
-        collects.delete sort.last
+       _collects = _collects.delete sort.last
       end
 
-      _collects.clear ensure _sort.clear
+      @collects = _collects
+      temporary.clear ensure _sort.clear
     end
     {% end %}
 
