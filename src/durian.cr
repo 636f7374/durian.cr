@@ -1,3 +1,3 @@
-require "../lib/immutable/src/immutable.cr"
+require "immutable"
 require "yaml"
 require "./durian/*"

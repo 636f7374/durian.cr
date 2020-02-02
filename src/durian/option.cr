@@ -3,12 +3,12 @@ class Durian::Option
 
   property timeout : TimeOut
   property addrinfo : Addrinfo
-  property mismatchRetryTimes : Int32
+  property retry : Retry?
 
   def initialize
     @timeout = TimeOut.new
     @addrinfo = Addrinfo.new
-    @mismatchRetryTimes = 5_i32
+    @retry = nil
   end
 
   class Addrinfo
@@ -18,6 +18,22 @@ class Durian::Option
 
     def initialize
       @withIpv6 = false
+    end
+  end
+
+  class Retry
+    include YAML::Serializable
+
+    property mismatch : Int32
+    property maximumIpv6 : Int32
+    property maximumIpv4 : Int32
+    property timeout : Int32
+
+    def initialize
+      @mismatch = 5_i32
+      @maximumIpv4 = 2_i32
+      @maximumIpv6 = 2_i32
+      @timeout = 1_i32
     end
   end
 

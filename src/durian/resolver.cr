@@ -73,16 +73,22 @@ class Durian::Resolver
     end
   end
 
+  def mismatch_retry
+    return 5_i32 unless retry = option.retry
+
+    retry.mismatch
+  end
+
   def resolve_by_flag!(socket : NetworkClient, host : String,
                        flag : RecordFlag, strict_answer : Bool = false) : Packet::Response?
     buffer = uninitialized UInt8[4096_i32]
-
     protocol = get_socket_protocol(socket) || Protocol::UDP
+
     request = Packet::Request.new protocol
     request.add_query host, flag
     socket.send request.to_slice
 
-    option.mismatchRetryTimes.times do
+    mismatch_retry.times do
       length, address = socket.receive buffer.to_slice
       length = 0_i32 unless length
 
