@@ -105,8 +105,7 @@ class Durian::Resolver
     end
   end
 
-  private def self.extract_canonical_name_ip_address(host : String, alias_server : AliasServer,
-                                                     list : Array(Socket::IPAddress))
+  private def self.extract_canonical_name_ip_address(host : String, alias_server : AliasServer, list : Array(Socket::IPAddress))
     return unless _alias = alias_server[host]?
 
     loop do
@@ -181,7 +180,7 @@ class Durian::Resolver
     method, list = getaddrinfo_all host, port, resolver
     raise Socket::Error.new "Invalid host address" if list.empty?
 
-    return Tuple.new method, list.first if 1_i32 == list.size || false == resolver.option.retry.nil?
+    return Tuple.new method, list.first if 1_i32 == list.size || resolver.option.retry.nil?
 
     ip_address = TCPSocket.try_connect_ip_address list, resolver.option.retry
     raise Socket::Error.new "IP address cannot connect" unless ip_address
@@ -190,6 +189,24 @@ class Durian::Resolver
     ip_cache.set host, ip_address if ip_cache
 
     Tuple.new method, ip_address
+  end
+
+  def self.get_tcp_socket!(host : String, port : Int32, resolver : Resolver, connect_timeout : Int | Float? = nil) : ::TCPSocket
+    method, list = getaddrinfo_all host, port, resolver
+    raise Socket::Error.new "Invalid host address" if list.empty?
+
+    if 1_i32 == list.size || resolver.option.retry.nil?
+      return ::TCPSocket.new list.first.address, list.first.port, connect_timeout: connect_timeout || 5_i32
+    end
+
+    choice = TCPSocket.choice_ip_address list, resolver.option.retry
+    raise Socket::Error.new "IP address cannot connect" unless choice
+
+    socket, ip_address = choice
+    ip_cache = resolver.ip_cache
+    ip_cache.set host, ip_address if ip_cache
+
+    socket
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress? = nil,
