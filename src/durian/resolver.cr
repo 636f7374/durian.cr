@@ -177,39 +177,54 @@ class Durian::Resolver
     ip_cache.get host, port
   end
 
-  def self.getaddrinfo(host : String, port : Int32, ip_cache : Cache::IPAddress? = nil,
-                       dnsServer : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32),
-                       protocol : Protocol = Protocol::UDP,
-                       &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
-    yield getaddrinfo host, port, ip_cache, [Tuple.new dnsServer, protocol]
+  def self.getaddrinfo!(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Socket::IPAddress)
+    method, list = Durian::Resolver.getaddrinfo_all host, port, resolver
+    raise Socket::Error.new "Invalid host address" if list.empty?
+
+    return Tuple.new method, list.first if 1_i32 == list.size || false == resolver.option.retry.nil?
+
+    ip_address = TCPSocket.try_connect_ip_address list, resolver.option.retry
+    raise Socket::Error.new "IP address cannot connect" unless ip_address
+
+    ip_cache = resolver.ip_cache
+    ip_cache.set host, ip_address if ip_cache
+
+    Tuple.new method, ip_address
   end
 
-  def self.getaddrinfo(host : String, port : Int32, ip_cache : Cache::IPAddress? = nil,
-                       dnsServer : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32),
-                       protocol : Protocol = Protocol::UDP) : Tuple(Fetch, Array(Socket::IPAddress))
-    getaddrinfo host, port, ip_cache, [Tuple.new dnsServer, protocol]
+  def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress? = nil,
+                           dnsServer : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32),
+                           protocol : Protocol = Protocol::UDP,
+                           &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
+    yield getaddrinfo_all host, port, ip_cache, [Tuple.new dnsServer, protocol]
   end
 
-  def self.getaddrinfo(host : String, port : Int32, ip_cache : Cache::IPAddress?,
-                       dnsServers : Array(Tuple(Socket::IPAddress, Protocol)),
-                       &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
-    yield getaddrinfo host, port, ip_cache, dnsServers
+  def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress? = nil,
+                           dnsServer : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32),
+                           protocol : Protocol = Protocol::UDP) : Tuple(Fetch, Array(Socket::IPAddress))
+    getaddrinfo_all host, port, ip_cache, [Tuple.new dnsServer, protocol]
   end
 
-  def self.getaddrinfo(host : String, port : Int32, ip_cache : Cache::IPAddress?,
-                       dnsServers : Array(Tuple(Socket::IPAddress, Protocol))) : Tuple(Fetch, Array(Socket::IPAddress))
+  def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress?,
+                           dnsServers : Array(Tuple(Socket::IPAddress, Protocol)),
+                           &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
+    yield getaddrinfo_all host, port, ip_cache, dnsServers
+  end
+
+  def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress?,
+                           dnsServers : Array(Tuple(Socket::IPAddress, Protocol))) : Tuple(Fetch, Array(Socket::IPAddress))
     resolver = new dnsServers
     resolver.ip_cache = ip_cache if ip_cache
 
-    getaddrinfo host, port, resolver
+    getaddrinfo_all host, port, resolver
   end
 
-  def self.getaddrinfo(host : String, port : Int32, resolver : Resolver,
-                       &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
-    yield getaddrinfo host, port, resolver
+  def self.getaddrinfo_all(host : String, port : Int32, resolver : Resolver,
+                           &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
+    yield getaddrinfo_all host, port, resolver
   end
 
-  def self.getaddrinfo(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Array(Socket::IPAddress))
+  def self.getaddrinfo_all(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Array(Socket::IPAddress))
     list = [] of Socket::IPAddress
     list << Socket::IPAddress.new host, port rescue nil
     return Tuple.new Fetch::Local, list unless list.empty?

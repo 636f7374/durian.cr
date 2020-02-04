@@ -82,7 +82,7 @@ resolver = Durian::Resolver.new servers
 resolver.ip_cache = Durian::Resolver::Cache::IPAddress.new
 
 begin
-  socket = Durian::TCPSocket.new "www.example.com", 80_i32, resolver, 5_i32
+  socket = Durian::TCPSocket.connect "www.example.com", 80_i32, resolver, 5_i32
   socket.read_timeout = 5_i32
   socket.write_timeout = 5_i32
 rescue

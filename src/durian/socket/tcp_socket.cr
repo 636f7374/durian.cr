@@ -1,19 +1,8 @@
 class Durian::TCPSocket < TCPSocket
-  def initialize(host : String, port : Int32, resolver : Durian::Resolver, connect_timeout : Int | Float? = nil)
-    method, list = Durian::Resolver.getaddrinfo host, port, resolver
-    raise Socket::Error.new "Invalid host address" if list.empty?
+  def self.connect(host : String, port : Int32, resolver : Durian::Resolver, connect_timeout : Int | Float? = nil)
+    method, ip_address = Resolver.getaddrinfo! host, port, resolver
 
-    if 1_i32 == list.size || false == option.retry.nil?
-      return super list.first, connect_timeout, connect_timeout
-    end
-
-    ip_address = TCPSocket.try_connect_ip_address list, option.retry
-    raise Socket::Error.new "IP address cannot connect" unless ip_address
-
-    ip_cache = resolver.ip_cache
-    ip_cache.set host, ip_address if ip_cache
-
-    super ip_address, connect_timeout, connect_timeout
+    new ip_address, connect_timeout, connect_timeout
   end
 
   def self.try_connect_ip_address(list : Array(Socket::IPAddress), retry : Option::Retry?) : Socket::IPAddress?
