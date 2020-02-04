@@ -178,7 +178,7 @@ class Durian::Resolver
   end
 
   def self.getaddrinfo!(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Socket::IPAddress)
-    method, list = Durian::Resolver.getaddrinfo_all host, port, resolver
+    method, list = getaddrinfo_all host, port, resolver
     raise Socket::Error.new "Invalid host address" if list.empty?
 
     return Tuple.new method, list.first if 1_i32 == list.size || false == resolver.option.retry.nil?
