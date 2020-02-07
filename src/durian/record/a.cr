@@ -19,11 +19,7 @@ class Durian::Record::A < Durian::Record
     temporary = Durian.limit_length_buffer io, length
     IO.copy temporary, buffer rescue nil
     temporary.rewind
-
-    if temporary.size != length
-      temporary.close
-      return String.new
-    end
+    return String.new if temporary.size != length
 
     decode = Durian.decode_{{name.id}}_ipv4_address temporary, length
     temporary.close

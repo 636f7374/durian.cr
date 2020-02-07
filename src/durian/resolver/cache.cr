@@ -158,6 +158,7 @@ class Durian::Resolver
       property txt : Item?
       property mx : Item?
       property dname : Item?
+      property srv : Item?
 
       def initialize(@accessAt : Time = Time.local, @tapCount : Int32 = 0_i32)
         @a = nil
@@ -169,6 +170,7 @@ class Durian::Resolver
         @txt = nil
         @mx = nil
         @dname = nil
+        @srv = nil
       end
 
       def tap

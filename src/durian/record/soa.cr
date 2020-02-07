@@ -7,7 +7,8 @@ class Durian::Record::SOA < Durian::Record
   property expireLimit : UInt32
   property minimiumTimeToLive : UInt32
 
-  def initialize(@primaryNameServer : String = String.new, @cls : Cls = Cls::IN, @ttl : UInt32 = 0_u32, @from : String? = nil)
+  def initialize(@primaryNameServer : String = String.new, @authorityMailBox : String = String.new,
+                 @cls : Cls = Cls::IN, @ttl : UInt32 = 0_u32, @from : String? = nil)
     @flag = RecordFlag::SOA
     @authorityMailBox = String.new
     @serialNumber = 0_u32
@@ -23,39 +24,16 @@ class Durian::Record::SOA < Durian::Record
     buffer.write_bytes data_length, IO::ByteFormat::BigEndian
 
     data_buffer = Durian.limit_length_buffer io, data_length
+    IO.copy data_buffer, buffer ensure data_buffer.rewind
 
-    begin
-      IO.copy data_buffer, buffer ensure data_buffer.rewind
+    resource_record.primaryNameServer = Durian.decode_address data_buffer, buffer
+    resource_record.authorityMailBox = Durian.decode_address data_buffer, buffer
 
-      resource_record.primaryNameServer = Durian.decode_address data_buffer, buffer
-      resource_record.authorityMailBox = Durian.decode_address data_buffer, buffer
-
-      resource_record.serialNumber = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
-      resource_record.refreshInterval = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
-      resource_record.retryInterval = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
-      resource_record.expireLimit = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
-      resource_record.minimiumTimeToLive = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
-    rescue ex
-      data_buffer.close ensure raise ex
-    end
-
-    data_buffer.close
+    resource_record.serialNumber = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
+    resource_record.refreshInterval = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
+    resource_record.retryInterval = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
+    resource_record.expireLimit = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
+    resource_record.minimiumTimeToLive = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
   end
   {% end %}
-
-  def self.address_from_io?(io : IO, length : Int, buffer : IO, maximum_length : Int32 = 512_i32)
-    Durian.parse_strict_length_address io, length, buffer, recursive_depth: 0_i32, maximum_length: maximum_length
-  end
-
-  def self.address_from_io?(io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
-    Durian.parse_chunk_address io, buffer, recursive_depth: 0_i32, maximum_length: maximum_length
-  end
-
-  def address_from_io?(io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
-    SOA.address_from_io? io, buffer, recursive_depth: 0_i32, maximum_length: maximum_length
-  end
-
-  def address_from_io?(io : IO, length : Int, buffer : IO, maximum_length : Int32 = 512_i32)
-    SOA.address_from_io? io, length, buffer, recursive_depth: 0_i32, maximum_length: maximum_length
-  end
 end

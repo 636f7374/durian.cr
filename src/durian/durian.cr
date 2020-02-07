@@ -1,5 +1,5 @@
 module Durian
-  RecordType = %w(A AAAA NS PTR CNAME SOA TXT MX DNAME)
+  RecordType = %w(A AAAA NS PTR CNAME SOA TXT MX DNAME SRV)
 
   enum Protocol
     UDP

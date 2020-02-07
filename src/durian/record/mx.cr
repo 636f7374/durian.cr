@@ -13,33 +13,10 @@ class Durian::Record::MX < Durian::Record
     buffer.write_bytes data_length, IO::ByteFormat::BigEndian
 
     data_buffer = Durian.limit_length_buffer io, data_length
+    IO.copy data_buffer, buffer ensure data_buffer.rewind
 
-    begin
-      IO.copy data_buffer, buffer ensure data_buffer.rewind
-
-      resource_record.preference = data_buffer.read_bytes UInt16, IO::ByteFormat::BigEndian
-      resource_record.mailExchange = Durian.decode_address data_buffer, buffer
-    rescue ex
-      data_buffer.close ensure raise ex
-    end
-
-    data_buffer.close
+    resource_record.preference = data_buffer.read_bytes UInt16, IO::ByteFormat::BigEndian
+    resource_record.mailExchange = Durian.decode_address data_buffer, buffer
   end
   {% end %}
-
-  def self.address_from_io?(io : IO, length : Int, buffer : IO, maximum_length : Int32 = 512_i32)
-    Durian.parse_strict_length_address io, length, buffer, recursive_depth: 0_i32, maximum_length: maximum_length
-  end
-
-  def self.address_from_io?(io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
-    Durian.parse_chunk_address io, buffer, recursive_depth: 0_i32, maximum_length: maximum_length
-  end
-
-  def address_from_io?(io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
-    MX.address_from_io? io, buffer, recursive_depth: 0_i32, maximum_length: maximum_length
-  end
-
-  def address_from_io?(io : IO, length : Int, buffer : IO, maximum_length : Int32 = 512_i32)
-    MX.address_from_io? io, length, buffer, recursive_depth: 0_i32, maximum_length: maximum_length
-  end
 end

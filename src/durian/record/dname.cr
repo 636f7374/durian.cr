@@ -10,7 +10,7 @@ class Durian::Record::DNAME < Durian::Record
     data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
     buffer.write_bytes data_length, IO::ByteFormat::BigEndian
 
-    resource_record.delegationName = address_from_io? io, data_length, buffer, maximum_length
+    resource_record.delegationName = DNAME.address_from_io? io, data_length, buffer, maximum_length
   end
   {% end %}
 
@@ -20,13 +20,5 @@ class Durian::Record::DNAME < Durian::Record
 
   def self.address_from_io?(io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
     Durian.parse_chunk_address io, buffer, recursive_depth: 0_i32, maximum_length: maximum_length
-  end
-
-  def address_from_io?(io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
-    NS.address_from_io? io, buffer, recursive_depth: 0_i32, maximum_length: maximum_length
-  end
-
-  def address_from_io?(io : IO, length : Int, buffer : IO, maximum_length : Int32 = 512_i32)
-    NS.address_from_io? io, length, buffer, recursive_depth: 0_i32, maximum_length: maximum_length
   end
 end
