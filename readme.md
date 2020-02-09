@@ -66,7 +66,7 @@
 * [ ] Support DNS server features.
 * [ ] Better performance, Better DNS cache.
 
-## Using
+## Usage
 
 * Client | Http - Testing DNS resolution for IP availability.
 
