@@ -56,7 +56,7 @@
 * `C.getaddrinfo` is incompatible with green threads, It may cause your program to [pause](#related).
   * `C.getaddrinfo` is too bad, you should not use it in green thread.
   * In addition, (libuv `uv_getaddrinfo`, libevent `evdns_getaddrinfo`) is too complicated, you may encounter many problems.
-* Why is its name `Durian.cr`, it's just random, six-word English words.
+* Why is it named `Durian.cr`? it's just random six-word English words.
 * `Travis-CI` appears to be malfunctioning and this repository cannot be detected.
 
 ## Next
