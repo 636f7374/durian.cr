@@ -11,7 +11,6 @@ class Socket
       hints.ai_flags = 0_u8
       hints.ai_addrlen = ip_address_size
       hints.ai_addr = ip_address.to_unsafe
-      hints.ai_addr.value.sa_len = ip_address_size
 
       if service.is_a? Int
         hints.ai_flags |= LibC::AI_NUMERICSERV
