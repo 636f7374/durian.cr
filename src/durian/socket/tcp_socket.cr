@@ -1,6 +1,6 @@
 class Durian::TCPSocket < TCPSocket
   def self.connect(host : String, port : Int32, resolver : Durian::Resolver, connect_timeout : Int | Float? = nil)
-    Resolver.get_tcp_socket! host, port, durian, connect_timeout
+    Resolver.get_tcp_socket! host, port, resolver, connect_timeout
   end
 
   def self.try_connect_ip_address(list : Array(Socket::IPAddress), retry : Option::Retry?) : Socket::IPAddress?
