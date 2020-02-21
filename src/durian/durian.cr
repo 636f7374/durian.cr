@@ -12,90 +12,90 @@ module Durian
     Remote
   end
 
-  enum RecordFlag
+  enum RecordFlag : UInt16
     # Pseudo Record Types
-    ANY  = 255_i32
-    AXFR = 252_i32
-    IXFR = 251_i32
-    OPT  =  41_i32
+    ANY  = 255_u16
+    AXFR = 252_u16
+    IXFR = 251_u16
+    OPT  =  41_u16
 
     # Active Record Types
-    A          =     1_i32
-    AAAA       =    28_i32
-    AFSDB      =    18_i32
-    APL        =    42_i32
-    CAA        =   257_i32
-    CDNSKEY    =    60_i32
-    CDS        =    59_i32
-    CERT       =    37_i32
-    CNAME      =     5_i32
-    DHCID      =    49_i32
-    DLV        = 32769_i32
-    DNAME      =    39_i32
-    DNSKEY     =    48_i32
-    DS         =    43_i32
-    HIP        =    55_i32
-    IPSECKEY   =    25_i32
-    KX         =    36_i32
-    LOC        =    29_i32
-    MX         =    15_i32
-    NAPTR      =    35_i32
-    NS         =     2_i32
-    NSEC       =    47_i32
-    NSEC3      =    50_i32
-    NSEC3PARAM =    51_i32
-    OPENPGPKEY =    61_i32
-    PTR        =    12_i32
-    RRSIG      =    46_i32
-    RP         =    17_i32
-    SIG        =    24_i32
-    SOA        =     6_i32
-    SRV        =    33_i32
-    SSHFP      =    44_i32
-    TA         = 32768_i32
-    TKEY       =   249_i32
-    TLSA       =    52_i32
-    TSIG       =   250_i32
-    TXT        =    16_i32
-    URI        =   256_i32
+    A          =     1_u16
+    AAAA       =    28_u16
+    AFSDB      =    18_u16
+    APL        =    42_u16
+    CAA        =   257_u16
+    CDNSKEY    =    60_u16
+    CDS        =    59_u16
+    CERT       =    37_u16
+    CNAME      =     5_u16
+    DHCID      =    49_u16
+    DLV        = 32769_u16
+    DNAME      =    39_u16
+    DNSKEY     =    48_u16
+    DS         =    43_u16
+    HIP        =    55_u16
+    IPSECKEY   =    25_u16
+    KX         =    36_u16
+    LOC        =    29_u16
+    MX         =    15_u16
+    NAPTR      =    35_u16
+    NS         =     2_u16
+    NSEC       =    47_u16
+    NSEC3      =    50_u16
+    NSEC3PARAM =    51_u16
+    OPENPGPKEY =    61_u16
+    PTR        =    12_u16
+    RRSIG      =    46_u16
+    RP         =    17_u16
+    SIG        =    24_u16
+    SOA        =     6_u16
+    SRV        =    33_u16
+    SSHFP      =    44_u16
+    TA         = 32768_u16
+    TKEY       =   249_u16
+    TLSA       =    52_u16
+    TSIG       =   250_u16
+    TXT        =    16_u16
+    URI        =   256_u16
 
     # Obsolete Record Types
-    MD       =   3_i32
-    MF       =   4_i32
-    MAILA    = 254_i32
-    MB       =   7_i32
-    MG       =   8_i32
-    MR       =   9_i32
-    MINFO    =  14_i32
-    MAILB    = 253_i32
-    WKS      =  11_i32
-    NB       =  32_i32
-    NBSTAT   =  33_i32
-    NULL     =  10_i32
-    A6       =  38_i32
-    NXT      =  30_i32
-    KEY      =  25_i32
-    HINFO    =  13_i32
-    X25      =  19_i32
-    ISDN     =  20_i32
-    RT       =  21_i32
-    NSAP     =  22_i32
-    NSAP_PTR =  23_i32
-    PX       =  26_i32
-    EID      =  31_i32
-    NIMLOC   =  32_i32
-    ATMA     =  34_i32
-    SINK     =  40_i32
-    GPOS     =  27_i32
-    UINFO    = 100_i32
-    UID      = 101_i32
-    GID      = 102_i32
-    UNSPEC   = 103_i32
-    SPF      =  99_i32
+    MD       =   3_u16
+    MF       =   4_u16
+    MAILA    = 254_u16
+    MB       =   7_u16
+    MG       =   8_u16
+    MR       =   9_u16
+    MINFO    =  14_u16
+    MAILB    = 253_u16
+    WKS      =  11_u16
+    NB       =  32_u16
+    NBSTAT   =  33_u16
+    NULL     =  10_u16
+    A6       =  38_u16
+    NXT      =  30_u16
+    KEY      =  25_u16
+    HINFO    =  13_u16
+    X25      =  19_u16
+    ISDN     =  20_u16
+    RT       =  21_u16
+    NSAP     =  22_u16
+    NSAP_PTR =  23_u16
+    PX       =  26_u16
+    EID      =  31_u16
+    NIMLOC   =  32_u16
+    ATMA     =  34_u16
+    SINK     =  40_u16
+    GPOS     =  27_u16
+    UINFO    = 100_u16
+    UID      = 101_u16
+    GID      = 102_u16
+    UNSPEC   = 103_u16
+    SPF      =  99_u16
   end
 
-  enum Cls
-    IN = 1_i32
+  enum Cls : UInt8
+    IN = 1_u8
   end
 
   class MalformedPacket < Exception
@@ -183,26 +183,30 @@ module Durian
 
       case {first_hex.first, first_hex.last, _last_hex.first, _last_hex.last}
       when {"0", "0", "0", "0"}
-        colon = ipv6_address.last == ":" && ipv6_address[-2_i32]? == ":"
+        next if ipv6_address.empty?
+
+        colon = ":" == ipv6_address.last && ":" == ipv6_address[-2_i32]?
         ipv6_address << ":" unless colon
       when {"0", "0", "0", _last_hex.last}
         ipv6_address << _last_hex.last << ":"
       when {"0", "0", _last_hex.first, _last_hex.last}
-        ipv6_address << _last_hex.first 
+        ipv6_address << _last_hex.first
         ipv6_address << _last_hex.last << ":"
       when {"0", first_hex.last, _last_hex.first, _last_hex.last}
-        ipv6_address << first_hex.last << _last_hex.first 
+        ipv6_address << first_hex.last << _last_hex.first
         ipv6_address << _last_hex.last << ":"
       else
-        ipv6_address << first_hex.first << first_hex.last 
+        ipv6_address << first_hex.first << first_hex.last
         ipv6_address << _last_hex.first << _last_hex.last << ":"
       end
     end
 
-    ipv6_address.pop if "::" == ipv6_address.last || ":" == ipv6_address.last
+    return "::" if ipv6_address.empty?
 
-    buffer.close
-    ipv6_address.join
+    address = ipv6_address.join
+    return String.build { |io| io << "::" << address } if address.to_i?
+
+    address
   end
   {% end %}
 
