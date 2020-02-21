@@ -28,9 +28,9 @@ module Durian::Section
       _cls = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       _ttl = io.read_bytes UInt32, IO::ByteFormat::BigEndian
 
-      additional = new RecordFlag.new flag.to_i32
+      additional = new RecordFlag.new flag
       additional.resourceRecord.from = from
-      additional.resourceRecord.cls = Cls.new _cls.to_i32
+      additional.resourceRecord.cls = Cls.new _cls
       additional.resourceRecord.ttl = _ttl
 
       buffer.write_bytes flag, IO::ByteFormat::BigEndian

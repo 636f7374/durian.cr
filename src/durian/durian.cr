@@ -94,8 +94,8 @@ module Durian
     SPF      =  99_u16
   end
 
-  enum Cls : UInt8
-    IN = 1_u8
+  enum Cls : UInt16
+    IN = 1_u16
   end
 
   class MalformedPacket < Exception

@@ -30,9 +30,9 @@ module Durian::Section
       flag = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       _cls = io.read_bytes UInt16, IO::ByteFormat::BigEndian
 
-      question = new RecordFlag.new flag.to_i32
+      question = new RecordFlag.new flag
       question.query = query
-      question.cls = Cls.new _cls.to_i32
+      question.cls = Cls.new _cls
 
       buffer.write_bytes flag, IO::ByteFormat::BigEndian
       buffer.write_bytes _cls, IO::ByteFormat::BigEndian
