@@ -4,14 +4,14 @@ class Durian::TCPSocket < TCPSocket
   end
 
   def self.try_connect_ip_address(list : Array(Socket::IPAddress), retry : Option::Retry?) : Socket::IPAddress?
-    return unless choice = choice_ip_address list, retry
+    return unless choice = choose_ip_address list, retry
 
     socket, address = choice
     socket.close
     address
   end
 
-  def self.choice_ip_address(list : Array(Socket::IPAddress), retry : Option::Retry?) : Tuple(::TCPSocket, Socket::IPAddress)?
+  def self.choose_ip_address(list : Array(Socket::IPAddress), retry : Option::Retry?) : Tuple(::TCPSocket, Socket::IPAddress)?
     retry_timeout, maximum_retry_ipv6, maximum_retry_ipv4 = 1_i32, 2_i32, 2_i32
 
     if _retry = retry

@@ -199,12 +199,25 @@ class Durian::Resolver
       return ::TCPSocket.new list.first.address, list.first.port, connect_timeout: connect_timeout || 5_i32
     end
 
-    choice = TCPSocket.choice_ip_address list, resolver.option.retry
+    choice = TCPSocket.choose_ip_address list, resolver.option.retry
     raise Socket::Error.new "IP address cannot connect" unless choice
 
     socket, ip_address = choice
     ip_cache = resolver.ip_cache
     ip_cache.set host, ip_address if ip_cache
+
+    socket
+  end
+
+  def self.get_udp_socket!(host : String, port : Int32, resolver : Resolver, connect_timeout : Int | Float? = nil) : ::UDPSocket
+    method, list = getaddrinfo_all host, port, resolver
+    raise Socket::Error.new "Invalid host address" if list.empty?
+
+    ip_cache = resolver.ip_cache
+    ip_cache.set host, list.first if ip_cache
+
+    socket = UDPSocket.new list.first.family
+    socket.connect list.first
 
     socket
   end
