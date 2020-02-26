@@ -24,7 +24,6 @@ module Durian::Section
 
     def self.decode(io : IO, buffer : IO)
       from = Section.decode_resource_pointer io, buffer
-
       flag = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       _cls = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       _ttl = io.read_bytes UInt32, IO::ByteFormat::BigEndian
