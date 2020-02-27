@@ -112,9 +112,7 @@ class Durian::Resolver
       break unless _next = alias_server[_alias]?
       next _alias = _next if _next.is_a? String
 
-      if _next.is_a? Array(Socket::IPAddress)
-        break _next.each { |data| list << data }
-      end
+      break _next.each { |item| list << item } if _next.is_a? Array(Socket::IPAddress)
     end
   end
 
@@ -307,12 +305,10 @@ class Durian::Resolver
     fetch = [] of RecordFlag
 
     flags.each do |flag|
-      packet = fetch_raw_cache host, flag
+      next unless packet = fetch_raw_cache host, flag
 
-      if packet
-        resolve_response << Tuple.new host, flag, packet
-        fetch << flag
-      end
+      resolve_response << Tuple.new host, flag, packet
+      fetch << flag
     end
 
     fetch
@@ -342,42 +338,48 @@ class Durian::Resolver
 
   def resolve(host, flag : RecordFlag, strict_answer : Bool = false, &callback : ResolveResponse ->)
     tasks[host] = Hash(String, ResolveTask).new unless tasks[host]?
-    tasks[host][random.hex] = Tuple.new [flag], strict_answer, callback
+
+    loop do
+      _random = random.hex
+      next if item = tasks[host][_random]?
+
+      break tasks[host][random.hex] = Tuple.new [flag], strict_answer, callback
+    end
   end
 
   def resolve(host, flags : Array(RecordFlag), strict_answer : Bool = false, &callback : ResolveResponse ->)
     tasks[host] = Hash(String, ResolveTask).new unless tasks[host]?
-    tasks[host][random.hex] = Tuple.new flags, strict_answer, callback
+
+    loop do
+      _random = random.hex
+      next if item = tasks[host][_random]?
+
+      break tasks[host][random.hex] = Tuple.new flags, strict_answer, callback
+    end
   end
 
-  private def handle_task(channel : Channel(Nil), host : String,
-                          task : Hash(String, ResolveTask))
+  private def handle_task(host : String, task : Hash(String, ResolveTask))
+    channel = Channel(String).new
+
     task.each do |id, item|
       spawn do
         resolve_task host, item
-        task.delete id
       ensure
-        channel.send nil
+        channel.send id
       end
 
-      channel.receive
+      if receive_id = channel.receive
+        task.delete receive_id
+      end
     end
   end
 
   private def clean_tasks(tasks : Hash(String, Hash(String, ResolveTask)))
-    tasks.each do |host, task|
-      tasks.delete host if task.empty?
-    end
+    tasks.each { |host, task| tasks.delete host if task.empty? }
   end
 
   def run
-    channel = Channel(Nil).new
-
-    tasks.each do |host, task|
-      handle_task channel, host, task
-    end
-
+    tasks.each { |host, task| handle_task host, task }
     clean_tasks tasks
-    channel.close
   end
 end
