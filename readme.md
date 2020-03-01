@@ -58,7 +58,7 @@
   * In addition, (libuv `uv_getaddrinfo`, libevent `evdns_getaddrinfo`) is too complicated, you may encounter many problems.
 * Why is it named `Durian.cr`? it's just random six-word English words.
 * `Travis-CI` appears to be malfunctioning and this repository cannot be detected.
-* For a better future of the project, I decided to change the `MIT` license to the `GPLv3` license.
+* <del>For a better future of the project, I decided to change the `MIT` license to the `GPLv3` license.</del>
 
 ## Next
 
@@ -234,4 +234,4 @@ $ make test
 
 ## License
 
-* GPLv3 License
+* MIT License
