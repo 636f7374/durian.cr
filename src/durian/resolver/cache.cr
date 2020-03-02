@@ -23,7 +23,7 @@ class Durian::Resolver
     end
 
     def full?
-      size == capacity
+      capacity <= size
     end
 
     def clean_expires?
