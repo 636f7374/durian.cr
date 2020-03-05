@@ -207,7 +207,7 @@ class Durian::Resolver
     socket
   end
 
-  def self.get_udp_socket!(host : String, port : Int32, resolver : Resolver, connect_timeout : Int | Float? = nil) : ::UDPSocket
+  def self.get_udp_socket!(host : String, port : Int32, resolver : Resolver) : ::UDPSocket
     method, list = getaddrinfo_all host, port, resolver
     raise Socket::Error.new "Invalid host address" if list.empty?
 
