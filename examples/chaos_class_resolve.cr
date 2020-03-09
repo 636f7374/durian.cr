@@ -1,4 +1,4 @@
-#query local bind server version using CH class, TXT record
+# Query local bind server version using CH class, TXT record
 
 require "../src/durian.cr"
 

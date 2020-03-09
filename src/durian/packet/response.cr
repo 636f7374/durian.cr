@@ -43,7 +43,7 @@ module Durian::Packet
       @random = Random.new
     end
 
-    private def self.parse_flags_with_count!(response : Response, io, buffer : IO)
+    private def self.parse_flags_count!(response : Response, io, buffer : IO)
       static_bits = ByteFormat.extract_uint16_bits io, buffer
       bits_io = IO::Memory.new static_bits.to_slice
 
@@ -101,7 +101,7 @@ module Durian::Packet
       end
 
       response.transId = trans_id
-      parse_flags_with_count! response, io, buffer
+      parse_flags_count! response, io, buffer
 
       response.questionCount.times do
         break if bad_decode

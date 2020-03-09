@@ -42,7 +42,7 @@ module Durian::Packet
     end
     {% end %}
 
-    private def self.parse_flags_with_count!(request : Request, io, buffer : IO)
+    private def self.parse_flags_count!(request : Request, io, buffer : IO)
       static_bits = ByteFormat.extract_uint16_bits io, buffer
       bits_io = IO::Memory.new static_bits.to_slice
 
@@ -95,7 +95,7 @@ module Durian::Packet
       end
 
       request.transId = trans_id
-      parse_flags_with_count! request, io, buffer
+      parse_flags_count! request, io, buffer
 
       request.questionCount.times do
         break if bad_decode
@@ -145,7 +145,7 @@ module Durian::Packet
       flags = String.bits_build do |io|
         # QR : 1 bit, request (0) or response (1)
         # Request not required, set to 1 Zero
-        io << QRFlag::Query.to_i.to_s
+        io << QRFlag::Query.to_i
 
         # OpCode : 4 bits, request type
         # |_ QUERY_ Standard request
@@ -153,17 +153,17 @@ module Durian::Packet
         # |_ STATUS Server status query
         # |_ NOTIFY Database update notification (RFC1996)
         # |_ UPDATE Dynamic database update (RFC2136)
-        io << "%04b" % operationCode.to_i.to_s
+        io << "%04b" % operationCode.to_i
 
         # AA Authoritative Answer : 1 bit, reply from authoritative (1) or from cache (0)
         # Request not required, set to 1 Zero
         io << "0"
 
         # TC Truncated : 1 bit, response too large for UDP (1).
-        io << truncated.to_i.to_s
+        io << truncated.to_i
 
         # RD Recursion Desired: 1bit, ask for recursive (1) or iterative (0) response
-        io << recursionDesired.to_i.to_s
+        io << recursionDesired.to_i
 
         # RA Recursion Available : 1bit, server manages recursive (1) or not (0)
         # Request not required, set to 1 Zero
@@ -174,7 +174,7 @@ module Durian::Packet
         io << "0"
 
         # 1 bit AD Authenticated data, used by DNSSEC
-        io << authenticatedData.to_i.to_s
+        io << authenticatedData.to_i
 
         # 1 bit CD Checking Disabled, used by DNSSEC
         # Request not required, set to 1 Zero
