@@ -96,6 +96,8 @@ module Durian
 
   enum Cls : UInt16
     IN = 1_u16
+    CH = 3_u16  # rfc 2929
+    HS = 4_u16
   end
 
   class MalformedPacket < Exception
