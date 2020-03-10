@@ -62,6 +62,11 @@
 
 ## Next
 
+* [ ] Support Alias & Mapping and Special DNS Server.
+  * Alias & Mapping: (`123.123.234.234`|`example.com`) -> (`234.234.123.123`|`example.com`).
+  * Alias & Mapping: (`example.com` -> `8.8.8.8`, `google.com` -> `1.1.1.1`).
+  * Special DNS Server: Specify different DNS servers for each different Domain Name.
+  * This feature will be implemented soon, So stay tuned.
 * [ ] Support response packet `to_io` operation.
 * [ ] More exception handling.
 * [ ] Support DNS server features.

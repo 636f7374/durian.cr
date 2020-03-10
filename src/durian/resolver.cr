@@ -8,12 +8,12 @@ class Durian::Resolver
 
   property dnsServers : Array(Tuple(Socket::IPAddress, Protocol))
   property random : Random
-  property tasks : Hash(String, Hash(String, ResolveTask))
+  property tasks : Immutable::Map(String, Immutable::Map(String, ResolveTask))
   property option : Option
 
   def initialize(@dnsServers : Array(Tuple(Socket::IPAddress, Protocol)))
     @random = Random.new
-    @tasks = Hash(String, Hash(String, ResolveTask)).new
+    @tasks = Immutable::Map(String, Immutable::Map(String, ResolveTask)).new
     @option = Option.new
   end
 
@@ -332,28 +332,30 @@ class Durian::Resolver
   end
 
   def resolve(host, flag : RecordFlag, strict_answer : Bool = false, &callback : ResolveResponse ->)
-    tasks[host] = Hash(String, ResolveTask).new unless tasks[host]?
+    self.tasks = tasks.set host, Immutable::Map(String, ResolveTask).new unless tasks[host]?
 
     loop do
       _random = random.hex
       next if item = tasks[host][_random]?
 
-      break tasks[host][random.hex] = Tuple.new [flag], strict_answer, callback
+      update = tasks[host].set random.hex, Tuple.new [flag], strict_answer, callback
+      break self.tasks = tasks.set host, update
     end
   end
 
   def resolve(host, flags : Array(RecordFlag), strict_answer : Bool = false, &callback : ResolveResponse ->)
-    tasks[host] = Hash(String, ResolveTask).new unless tasks[host]?
+    self.tasks = tasks.set host, Immutable::Map(String, ResolveTask).new unless tasks[host]?
 
     loop do
       _random = random.hex
       next if item = tasks[host][_random]?
 
-      break tasks[host][random.hex] = Tuple.new flags, strict_answer, callback
+      update = tasks[host].set random.hex, Tuple.new flags, strict_answer, callback
+      break self.tasks = tasks.set host, update
     end
   end
 
-  private def handle_task(host : String, task : Hash(String, ResolveTask))
+  private def handle_task(host : String, task : Immutable::Map(String, ResolveTask))
     channel = Channel(String).new
 
     task.each do |id, item|
@@ -364,17 +366,12 @@ class Durian::Resolver
       end
 
       if receive_id = channel.receive
-        task.delete receive_id
+        tasks[host]?.try { |_task| self.tasks = tasks.set host, _task.delete receive_id }
       end
     end
   end
 
-  private def clean_tasks(tasks : Hash(String, Hash(String, ResolveTask)))
-    tasks.each { |host, task| tasks.delete host if task.empty? }
-  end
-
   def run
     tasks.each { |host, task| handle_task host, task }
-    clean_tasks tasks
   end
 end
