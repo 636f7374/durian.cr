@@ -100,7 +100,7 @@ module Durian
     Unassigned = 2_u16 # ... ....
     Chaos      = 3_u16 # RFC 2929 | D. Moon, "Chaosnet", A.I. Memo 628, Massachusetts Institute of Technology Artificial Intelligence Laboratory, June 1981.
     Hesiod     = 4_u16 # ... .... | Dyer, S., and F. Hsu, "Hesiod", Project Athena Technical Plan - Name Service, April 1987.
-    #     5 - 253 0x0005-0x00FD Unassigned
+    #     5 -   253 0x0005-0x00FD Unassigned
     QClassNone = 254_u16 # RFC 2136
     QClassAny  = 255_u16 # RFC 1035
     #   256 - 65279 0x0100-0xFEFF Unassigned
