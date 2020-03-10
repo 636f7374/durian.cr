@@ -4,7 +4,7 @@ class Durian::Record::SRV < Durian::Record
   property port : UInt16
   property target : String
 
-  def initialize(@target : String = String.new, @cls : Cls = Cls::IN, @ttl : UInt32 = 0_u32, @from : String? = nil)
+  def initialize(@target : String = String.new, @cls : Cls = Cls::Internet, @ttl : UInt32 = 0_u32, @from : String? = nil)
     @flag = RecordFlag::SRV
     @priority = 0_u16
     @weight = 0_u16

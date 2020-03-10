@@ -1,7 +1,7 @@
 class Durian::Record::TXT < Durian::Record
   property txt : String
 
-  def initialize(@txt : String = String.new, @cls : Cls = Cls::IN, @ttl : UInt32 = 0_u32, @from : String? = nil)
+  def initialize(@txt : String = String.new, @cls : Cls = Cls::Internet, @ttl : UInt32 = 0_u32, @from : String? = nil)
     @flag = RecordFlag::TXT
   end
 

@@ -95,9 +95,17 @@ module Durian
   end
 
   enum Cls : UInt16
-    IN = 1_u16
-    CH = 3_u16  # rfc 2929
-    HS = 4_u16
+    Reserved   = 0_u16 # RFC 6895
+    Internet   = 1_u16 # RFC 1035
+    Unassigned = 2_u16 # ... ....
+    Chaos      = 3_u16 # RFC 2929 | D. Moon, "Chaosnet", A.I. Memo 628, Massachusetts Institute of Technology Artificial Intelligence Laboratory, June 1981.
+    Hesiod     = 4_u16 # ... .... | Dyer, S., and F. Hsu, "Hesiod", Project Athena Technical Plan - Name Service, April 1987.
+    #     5 - 253 0x0005-0x00FD Unassigned
+    QClassNone = 254_u16 # RFC 2136
+    QClassAny  = 255_u16 # RFC 1035
+    #   256 - 65279 0x0100-0xFEFF Unassigned
+    # 65280 - 65534 0xFF00-0xFFFE Reserved for Private Use [RFC 6895]
+    AnotherReserved = 65535_u16 # RFC 6895
   end
 
   class MalformedPacket < Exception
@@ -231,10 +239,7 @@ module Durian
 
     return String.new if length.zero?
     return String.new if chunk_length.first.zero?
-
-    if chunk_length.first > buffer.size
-      return String.new
-    end
+    return String.new if chunk_length.first > buffer.size
 
     decode_address_by_pointer buffer, chunk_length.first, recursive_depth, maximum_length, maximum_recursive
   end
@@ -312,8 +317,6 @@ module Durian
     pointer_address = pointer_address_buffer.to_slice
     temporary.close ensure pointer_address_buffer.close
 
-    String.build do |io|
-      io << decode << String.new pointer_address
-    end
+    String.build { |io| io << decode << String.new pointer_address }
   end
 end

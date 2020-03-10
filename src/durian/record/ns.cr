@@ -1,7 +1,7 @@
 class Durian::Record::NS < Durian::Record
   property nameServer : String
 
-  def initialize(@nameServer : String = String.new, @cls : Cls = Cls::IN, @ttl : UInt32 = 0_u32, @from : String? = nil)
+  def initialize(@nameServer : String = String.new, @cls : Cls = Cls::Internet, @ttl : UInt32 = 0_u32, @from : String? = nil)
     @flag = RecordFlag::NS
   end
 

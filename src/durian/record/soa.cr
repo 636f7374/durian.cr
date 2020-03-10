@@ -8,7 +8,7 @@ class Durian::Record::SOA < Durian::Record
   property minimiumTimeToLive : UInt32
 
   def initialize(@primaryNameServer : String = String.new, @authorityMailBox : String = String.new,
-                 @cls : Cls = Cls::IN, @ttl : UInt32 = 0_u32, @from : String? = nil)
+                 @cls : Cls = Cls::Internet, @ttl : UInt32 = 0_u32, @from : String? = nil)
     @flag = RecordFlag::SOA
     @authorityMailBox = String.new
     @serialNumber = 0_u32

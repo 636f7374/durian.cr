@@ -6,7 +6,7 @@ buffer = uninitialized UInt8[4096_i32]
 
 request = Durian::Packet::Request.new
 
-request.queries << Durian::Section::Question.new Durian::RecordFlag::TXT, "version.bind", Durian::Cls::CH
+request.queries << Durian::Section::Question.new Durian::RecordFlag::TXT, "version.bind", Durian::Cls::Chaos
 
 _request = IO::Memory.new request.to_slice
 puts [:Request, Durian::Packet::Request.from_io _request]

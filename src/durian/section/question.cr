@@ -4,7 +4,7 @@ module Durian::Section
     property query : String
     property cls : Cls
 
-    def initialize(@flag : RecordFlag = RecordFlag::ANY, @query : String = String.new, @cls : Cls = Cls::IN)
+    def initialize(@flag : RecordFlag = RecordFlag::ANY, @query : String = String.new, @cls : Cls = Cls::Internet)
     end
 
     def encode(io : IO)
@@ -20,7 +20,7 @@ module Durian::Section
       io.write_bytes cls.to_u16, IO::ByteFormat::BigEndian
     end
 
-    def self.encode(flag : RecordFlag, query : String, io : IO, cls : Cls = Cls::IN)
+    def self.encode(flag : RecordFlag, query : String, io : IO, cls : Cls = Cls::Internet)
       question = new flag, query, cls
       question.encode io
     end

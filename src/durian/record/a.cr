@@ -1,7 +1,7 @@
 class Durian::Record::A < Durian::Record
   property ipv4Address : String
 
-  def initialize(@ipv4Address : String = String.new, @cls : Cls = Cls::IN, @ttl : UInt32 = 0_u32, @from : String? = nil)
+  def initialize(@ipv4Address : String = String.new, @cls : Cls = Cls::Internet, @ttl : UInt32 = 0_u32, @from : String? = nil)
     @flag = RecordFlag::A
   end
 
