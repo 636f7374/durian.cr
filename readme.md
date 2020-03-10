@@ -81,7 +81,7 @@ servers << Tuple.new Socket::IPAddress.new("1.1.1.1", 53_i32), Durian::Protocol:
 buffer = uninitialized UInt8[4096_i32]
 
 resolver = Durian::Resolver.new servers
-resolver.ip_cache = Durian::Resolver::Cache::IPAddress.new
+resolver.ip_cache = Durian::Cache::IPAddress.new
 
 begin
   socket = Durian::TCPSocket.connect "www.example.com", 80_i32, resolver, 5_i32
@@ -116,7 +116,7 @@ servers << Tuple.new Socket::IPAddress.new("8.8.8.8", 53_i32), Durian::Protocol:
 servers << Tuple.new Socket::IPAddress.new("1.1.1.1", 53_i32), Durian::Protocol::UDP
 
 resolver = Durian::Resolver.new servers
-resolver.cache = Durian::Resolver::Cache.new
+resolver.cache = Durian::Cache.new
 
 resolver.resolve "google.com", [Durian::RecordFlag::A, Durian::RecordFlag::AAAA] do |response|
   puts [:Google, Time.utc, response]
