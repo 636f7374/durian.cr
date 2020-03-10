@@ -1,4 +1,4 @@
-class Durian::Resolver
+module Durian
   class Cache::IPAddress
     property collects : Immutable::Map(String, Item)
     property capacity : Int32

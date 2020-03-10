@@ -1,4 +1,4 @@
-class Durian::Resolver
+module Durian
   abstract class Network
     abstract def read_timeout=(value : Int32)
     abstract def read_timeout=(value : Time::Span)

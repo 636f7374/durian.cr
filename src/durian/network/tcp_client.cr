@@ -1,24 +1,24 @@
-class Durian::Resolver
-  class Network::UDPClient
+module Durian
+  class Network::TCPClient < Network
     property address : Socket::IPAddress
+    property connectTimeout : Time::Span
 
-    def initialize(@address : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32))
+    def initialize(@address : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32), @connectTimeout : Time::Span = 5_i32.seconds)
     end
 
-    def socket=(value : ::UDPSocket)
+    def socket=(value : ::TCPSocket)
       @socket = value
     end
 
-    def socket : ::UDPSocket
+    def socket : ::TCPSocket
       if _socket = @socket
         return _socket
       end
 
-      socket = ::UDPSocket.new address.family
+      socket = ::TCPSocket.new address, connectTimeout, connectTimeout
 
       socket.read_timeout = read_timeout
       socket.write_timeout = write_timeout
-      socket.connect address
 
       @socket = socket
     end
@@ -40,7 +40,7 @@ class Durian::Resolver
     end
 
     def receive(value : Bytes)
-      socket.receive value
+      Tuple.new socket.read(value), socket.remote_address
     end
 
     def close

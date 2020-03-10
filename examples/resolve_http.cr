@@ -7,7 +7,7 @@ servers << Tuple.new Socket::IPAddress.new("1.1.1.1", 53_i32), Durian::Protocol:
 buffer = uninitialized UInt8[4096_i32]
 
 resolver = Durian::Resolver.new servers
-resolver.ip_cache = Durian::Resolver::Cache::IPAddress.new
+resolver.ip_cache = Durian::Cache::IPAddress.new
 
 begin
   socket = Durian::TCPSocket.connect "www.example.com", 80_i32, resolver, 5_i32

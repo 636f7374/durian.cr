@@ -1,5 +1,3 @@
-require "./resolver/*"
-
 class Durian::Resolver
   IPAddressRecordFlags = [RecordFlag::A, RecordFlag::AAAA]
 
@@ -52,10 +50,7 @@ class Durian::Resolver
       if strict_answer
         include_flag = false
 
-        packet.answers.each do |answer|
-          break include_flag = true if answer.flag == flag
-        end
-
+        packet.answers.each { |answer| break include_flag = true if answer.flag == flag }
         next socket.close unless include_flag
       end
 
@@ -197,10 +192,10 @@ class Durian::Resolver
       return ::TCPSocket.new list.first.address, list.first.port, connect_timeout: connect_timeout || 5_i32
     end
 
-    choice = TCPSocket.choose_ip_address list, resolver.option.retry
-    raise Socket::Error.new "IP address cannot connect" unless choice
+    choose = TCPSocket.choose_ip_address list, resolver.option.retry
+    raise Socket::Error.new "IP address cannot connect" unless choose
 
-    socket, ip_address = choice
+    socket, ip_address = choose
     ip_cache = resolver.ip_cache
     ip_cache.set host, ip_address if ip_cache
 
