@@ -1,2 +1,0 @@
-require "./extra/*"
-require "./socket/*"

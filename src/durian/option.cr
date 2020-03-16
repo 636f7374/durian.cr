@@ -4,11 +4,15 @@ class Durian::Option
   property timeout : TimeOut
   property addrinfo : Addrinfo
   property retry : Retry?
+  property mapping : Array(Mapping)
+  property specify : Array(Specify)
 
   def initialize
     @timeout = TimeOut.new
     @addrinfo = Addrinfo.new
     @retry = nil
+    @mapping = [] of Mapping
+    @specify = [] of Specify
   end
 
   class Addrinfo
@@ -18,6 +22,40 @@ class Durian::Option
 
     def initialize
       @withIpv6 = false
+    end
+  end
+
+  class Mapping
+    include YAML::Serializable
+
+    property from : String
+    property to : String
+    property isRegex : Bool?
+    property isStrict : Bool?
+
+    def initialize
+      @from = String.new
+      @to = String.new
+      @isRegex = nil
+      @isStrict = nil
+    end
+  end
+
+  class Specify
+    include YAML::Serializable
+
+    property from : String
+    property through : Array(Tuple(Socket::IPAddress, Protocol))
+    property isRegex : Bool?
+    property isStrict : Bool?
+    property withPort : Bool?
+
+    def initialize
+      @from = String.new
+      @through = [] of Tuple(Socket::IPAddress, Protocol)
+      @isRegex = nil
+      @isStrict = nil
+      @withPort = nil
     end
   end
 

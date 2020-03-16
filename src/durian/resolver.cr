@@ -37,13 +37,15 @@ class Durian::Resolver
     @ip_cache
   end
 
-  def resolve_by_flag!(host : String, flag : RecordFlag, strict_answer : Bool = false) : Packet::Response?
-    dnsServers.each do |server|
+  def resolve_by_flag!(specify : Array(Tuple(Socket::IPAddress, Protocol))?, host : String,
+                       flag : RecordFlag, strict_answer : Bool = false) : Packet::Response?
+    servers = specify || dnsServers
+
+    servers.each do |server|
       socket = Network.create_client server, option.timeout rescue nil
       next unless socket
 
       packet = resolve_by_flag! socket, host, flag rescue nil
-
       next socket.close unless packet
       next socket.close if packet.answerCount.zero? || packet.answers.empty?
 
@@ -60,12 +62,7 @@ class Durian::Resolver
   end
 
   def get_socket_protocol(socket : NetworkClient)
-    case socket
-    when Network::TCPClient
-      Protocol::TCP
-    when Network::UDPClient
-      Protocol::UDP
-    end
+    socket.is_a?(Network::TCPClient) ? Protocol::TCP : Protocol::UDP
   end
 
   def mismatch_retry
@@ -123,37 +120,31 @@ class Durian::Resolver
 
         case _record
         when Record::AAAA
-          if _record.responds_to? :ipv6Address
-            _ip_address = Socket::IPAddress.new _record.ipv6Address, port rescue nil
-            next unless _ip_address
-            next list << _ip_address if host == from
+          return unless _record.responds_to? :ipv6Address
 
-            unless alias_server[from]?
-              alias_server[from] = Array(Socket::IPAddress).new
-            end
+          _ip_address = Socket::IPAddress.new _record.ipv6Address, port rescue nil
+          next unless _ip_address
+          next list << _ip_address if host == from
+          alias_server[from] = Array(Socket::IPAddress).new unless alias_server[from]?
 
-            if alias_list = alias_server[from]?
-              alias_list << _ip_address if alias_list.is_a? Array(Socket::IPAddress)
-            end
+          if alias_list = alias_server[from]?
+            alias_list << _ip_address if alias_list.is_a? Array(Socket::IPAddress)
           end
         when Record::A
-          if _record.responds_to? :ipv4Address
-            _ip_address = Socket::IPAddress.new _record.ipv4Address, port rescue nil
-            next unless _ip_address
-            next list << _ip_address if host == from
+          return unless _record.responds_to? :ipv4Address
 
-            unless alias_server[from]?
-              alias_server[from] = Array(Socket::IPAddress).new
-            end
+          _ip_address = Socket::IPAddress.new _record.ipv4Address, port rescue nil
+          next unless _ip_address
+          next list << _ip_address if host == from
+          alias_server[from] = Array(Socket::IPAddress).new unless alias_server[from]?
 
-            if alias_list = alias_server[from]?
-              alias_list << _ip_address if alias_list.is_a? Array(Socket::IPAddress)
-            end
+          if alias_list = alias_server[from]?
+            alias_list << _ip_address if alias_list.is_a? Array(Socket::IPAddress)
           end
         when Record::CNAME
-          if _record.responds_to? :canonicalName
-            alias_server[from] = _record.canonicalName
-          end
+          return unless _record.responds_to? :canonicalName
+
+          alias_server[from] = _record.canonicalName
         end
       end
 
@@ -172,14 +163,13 @@ class Durian::Resolver
   def self.getaddrinfo!(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Socket::IPAddress)
     method, list = getaddrinfo_all host, port, resolver
     raise Socket::Error.new "Invalid host address" if list.empty?
-
     return Tuple.new method, list.first if 1_i32 == list.size || resolver.option.retry.nil?
 
     ip_address = TCPSocket.try_connect_ip_address list, resolver.option.retry
     raise Socket::Error.new "IP address cannot connect" unless ip_address
 
     ip_cache = resolver.ip_cache
-    ip_cache.set host, ip_address if ip_cache
+    ip_cache.try &.set host, ip_address
 
     Tuple.new method, ip_address
   end
@@ -197,7 +187,7 @@ class Durian::Resolver
 
     socket, ip_address = choose
     ip_cache = resolver.ip_cache
-    ip_cache.set host, ip_address if ip_cache
+    ip_cache.try &.set host, ip_address
 
     socket
   end
@@ -207,7 +197,7 @@ class Durian::Resolver
     raise Socket::Error.new "Invalid host address" if list.empty?
 
     ip_cache = resolver.ip_cache
-    ip_cache.set host, list.first if ip_cache
+    ip_cache.try &.set host, list.first
 
     socket = UDPSocket.new list.first.family
     socket.connect list.first
@@ -248,6 +238,9 @@ class Durian::Resolver
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Array(Socket::IPAddress))
+    host = resolver.mapping_host host
+    specify = resolver.specify_dns_server host, port
+
     list = [] of Socket::IPAddress
     list << Socket::IPAddress.new host, port rescue nil
     return Tuple.new Fetch::Local, list unless list.empty?
@@ -258,14 +251,57 @@ class Durian::Resolver
     record_flags = [RecordFlag::A]
     record_flags = IPAddressRecordFlags if resolver.option.addrinfo.withIpv6
 
-    resolver.resolve_task host, Tuple.new record_flags, true, ->(resolve_response : ResolveResponse) do
+    resolver.resolve_task specify, host, Tuple.new record_flags, true, ->(resolve_response : ResolveResponse) do
       extract_all_ip_address host, port, resolve_response, list
     end
 
     ip_cache = resolver.ip_cache
-    ip_cache.set host, list unless list.empty? if ip_cache
+    ip_cache.try &.set host, list unless list.empty?
 
     Tuple.new Fetch::Remote, list
+  end
+
+  def mapping_host(host : String) : String
+    return host if option.mapping.empty?
+
+    option.mapping.each do |item|
+      case {!!item.isRegex, !!item.isStrict}
+      when {!!item.isRegex, false}
+        from = item.from
+
+        if item.isRegex
+          from = Regex.new item.from
+        end
+
+        host = host.gsub from, item.to
+      when {false, true}
+        host = item.to if host == item.from
+      end
+    end
+
+    host
+  end
+
+  def specify_dns_server(host : String, port : Int32? = 0_i32) : Array(Tuple(Socket::IPAddress, Protocol))?
+    return if option.specify.empty?
+
+    list = [] of Tuple(Socket::IPAddress, Protocol)
+    address = String.build { |io| io << host << port }
+
+    option.specify.each do |item|
+      case {!!item.isRegex, !!item.isStrict}
+      when {true, false}
+        break list = item.through if address.match Regex.new item.from
+      when {false, false}
+        break list = item.through if address.includes? item.from
+      when {false, true}
+        _address = item.withPort ? address : host
+        break list = item.through if _address.downcase == item.from.downcase
+      end
+    end
+
+    return if list.empty?
+    return list
   end
 
   def to_ip_address(host : String)
@@ -287,10 +323,7 @@ class Durian::Resolver
   def cache_expires?(host, flags : Array(RecordFlag))
     expires = [] of RecordFlag
     return expires unless _cache = cache
-
-    flags.each do |flag|
-      expires << flag if _cache.expires? host, flag
-    end
+    flags.each { |flag| expires << flag if _cache.expires? host, flag }
 
     expires
   end
@@ -309,7 +342,7 @@ class Durian::Resolver
     fetch
   end
 
-  def resolve_task(host : String, task : ResolveTask)
+  def resolve_task(specify : Array(Tuple(Socket::IPAddress, Protocol))?, host : String, task : ResolveTask)
     packets = [] of Tuple(String, RecordFlag, Packet::Response)
     flags, strict_answer, proc = task
 
@@ -322,7 +355,7 @@ class Durian::Resolver
     flags.each do |flag|
       next if cache_fetch.includes? flag
       next if ip_address && IPAddressRecordFlags.includes? flag
-      next unless packet = resolve_by_flag! host, flag, strict_answer
+      next unless packet = resolve_by_flag! specify, host, flag, strict_answer
 
       packets << Tuple.new host, flag, packet
       set_cache host, packet, flag
@@ -358,9 +391,12 @@ class Durian::Resolver
   private def handle_task(host : String, task : Immutable::Map(String, ResolveTask))
     channel = Channel(String).new
 
+    host = mapping_host host
+    _specify = specify_dns_server host
+
     task.each do |id, item|
       spawn do
-        resolve_task host, item
+        resolve_task _specify, host, item
       ensure
         channel.send id
       end
