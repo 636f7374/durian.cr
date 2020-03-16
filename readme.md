@@ -59,7 +59,7 @@
 
 ## Next
 
-* [-] Support Alias & Mapping and Special DNS Server.
+* [X] Support Alias & Mapping and Special DNS Server.
   * Alias & Mapping: (`123.234.123.234`|`foo.com`) -> (`234.123.234.123`|`bar.com`).
   * Special DNS Server: Specify different DNS servers for each different Domain Name.
   * Special DNS Server: (`example.com` -> `8.8.8.8`, `google.com` -> `1.1.1.1`).
