@@ -238,7 +238,8 @@ class Durian::Resolver
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Array(Socket::IPAddress))
-    host = resolver.mapping_host host
+    _address = resolver.mapping_address host, port
+    host, port = _address if _address
     specify = resolver.specify_dns_server host, port
 
     list = [] of Socket::IPAddress
@@ -261,25 +262,30 @@ class Durian::Resolver
     Tuple.new Fetch::Remote, list
   end
 
-  def mapping_host(host : String) : String
-    return host if option.mapping.empty?
+  def mapping_address(host : String, port : Int32) : Tuple(String, Int32)?
+    return if option.mapping.empty?
+
+    list = [] of Option::Mapping
+    address = String.build { |io| io << host << port }
 
     option.mapping.each do |item|
+      _address = item.withPort ? address : host
+
       case {!!item.isRegex, !!item.isStrict}
-      when {!!item.isRegex, false}
-        from = item.from
-
-        if item.isRegex
-          from = Regex.new item.from
-        end
-
-        host = host.gsub from, item.to
+      when {true, false}
+        break list << item if _address.match Regex.new item.from
+      when {false, false}
+        break list << item if _address.includes? item.from
       when {false, true}
-        host = item.to if host == item.from
+        break list << item if _address.downcase == item.from.downcase
       end
     end
 
-    host
+    return if list.empty?
+
+    to = list.first.to.rpartition ":"
+    return Tuple.new list.first.to, port unless _port = to.last.to_i?
+    return Tuple.new to.first, _port
   end
 
   def specify_dns_server(host : String, port : Int32? = 0_i32) : Array(Tuple(Socket::IPAddress, Protocol))?
@@ -289,13 +295,14 @@ class Durian::Resolver
     address = String.build { |io| io << host << port }
 
     option.specify.each do |item|
+      _address = item.withPort ? address : host
+
       case {!!item.isRegex, !!item.isStrict}
       when {true, false}
-        break list = item.through if address.match Regex.new item.from
+        break list = item.through if _address.match Regex.new item.from
       when {false, false}
-        break list = item.through if address.includes? item.from
+        break list = item.through if _address.includes? item.from
       when {false, true}
-        _address = item.withPort ? address : host
         break list = item.through if _address.downcase == item.from.downcase
       end
     end

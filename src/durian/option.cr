@@ -32,12 +32,14 @@ class Durian::Option
     property to : String
     property isRegex : Bool?
     property isStrict : Bool?
+    property withPort : Bool?
 
     def initialize
       @from = String.new
       @to = String.new
       @isRegex = nil
       @isStrict = nil
+      @withPort = nil
     end
   end
 
