@@ -279,7 +279,7 @@ class Durian::Resolver
     return if option.{{name.id}}.empty?
 
     list = [] of Option::{{name.capitalize.id}}
-    address = String.build { |io| io << host << port }
+    address = String.build { |io| io << host << ":" << port }
 
     option.{{name.id}}.each do |item|
       _address = item.withPort ? address : host
