@@ -238,21 +238,29 @@ class Durian::Resolver
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Array(Socket::IPAddress))
-    _address = resolver.mapping_address host, port
+    _mapping = resolver.mapping? host, port
+    _address = resolver.mapping_to? _mapping, port if _mapping
     host, port = _address if _address
-    specify = resolver.specify_dns_server host, port
 
-    list = [] of Socket::IPAddress
-    list << Socket::IPAddress.new host, port rescue nil
-    return Tuple.new Fetch::Local, list unless list.empty?
+    # Test if it is an IP address
+    ip_address = Socket::IPAddress.new host, port rescue nil
+    return Tuple.new Fetch::Local, [ip_address] if ip_address
 
+    # Fetch data from IP cache
     from_ip_cache = fetch_ip_cache host, port, resolver.ip_cache
     return Tuple.new Fetch::Cache, from_ip_cache unless from_ip_cache.empty? if from_ip_cache
 
+    # Set fetch type
     record_flags = [RecordFlag::A]
     record_flags = IPAddressRecordFlags if resolver.option.addrinfo.withIpv6
 
-    resolver.resolve_task specify, host, Tuple.new record_flags, true, ->(resolve_response : ResolveResponse) do
+    # Switch to a custom DNS server
+    _specify = resolver.specify? host, port
+    _through = _specify.through if _specify
+
+    list = [] of Socket::IPAddress
+
+    resolver.resolve_task _through, host, Tuple.new record_flags, true, ->(resolve_response : ResolveResponse) do
       extract_all_ip_address host, port, resolve_response, list
     end
 
@@ -262,7 +270,7 @@ class Durian::Resolver
     Tuple.new Fetch::Remote, list
   end
 
-  def mapping_address(host : String, port : Int32) : Tuple(String, Int32)?
+  def mapping?(host : String, port : Int32? = 0_i32) : Option::Mapping?
     return if option.mapping.empty?
 
     list = [] of Option::Mapping
@@ -282,16 +290,27 @@ class Durian::Resolver
     end
 
     return if list.empty?
-
-    to = list.first.to.rpartition ":"
-    return Tuple.new list.first.to, port unless _port = to.last.to_i?
-    return Tuple.new to.first, _port
+    list.first
   end
 
-  def specify_dns_server(host : String, port : Int32? = 0_i32) : Array(Tuple(Socket::IPAddress, Protocol))?
+  def mapping_to?(item, port : Int32 = 0_i32) : Tuple(String, Int32)?
+    return unless to = item.to
+
+    case !!item.withPort
+    when true
+      _to = to.rpartition ":"
+      return Tuple.new to, port unless _port = _to.last.to_i?
+
+      Tuple.new _to.first, _port
+    when false
+      Tuple.new to, port
+    end
+  end
+
+  def specify?(host : String, port : Int32? = 0_i32) : Option::Specify?
     return if option.specify.empty?
 
-    list = [] of Tuple(Socket::IPAddress, Protocol)
+    list = [] of Option::Specify
     address = String.build { |io| io << host << port }
 
     option.specify.each do |item|
@@ -299,16 +318,16 @@ class Durian::Resolver
 
       case {!!item.isRegex, !!item.isStrict}
       when {true, false}
-        break list = item.through if _address.match Regex.new item.from
+        break list << item if _address.match Regex.new item.from
       when {false, false}
-        break list = item.through if _address.includes? item.from
+        break list << item if _address.includes? item.from
       when {false, true}
-        break list = item.through if _address.downcase == item.from.downcase
+        break list << item if _address.downcase == item.from.downcase
       end
     end
 
     return if list.empty?
-    return list
+    return list.first
   end
 
   def to_ip_address(host : String)
@@ -398,12 +417,16 @@ class Durian::Resolver
   private def handle_task(host : String, task : Immutable::Map(String, ResolveTask))
     channel = Channel(String).new
 
-    host = mapping_host host
-    _specify = specify_dns_server host
+    _mapping = mapping? host
+    _to = mapping_to? _mapping if _mapping
+    host = _to.first if _to
+
+    _specify = specify? host
+    _through = _specify.through if _specify
 
     task.each do |id, item|
       spawn do
-        resolve_task _specify, host, item
+        resolve_task _through, host, item
       ensure
         channel.send id
       end

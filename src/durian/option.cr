@@ -26,17 +26,17 @@ class Durian::Option
   end
 
   class Mapping
-    include YAML::Serializable
-
     property from : String
-    property to : String
+    property to : String?
+    property local : Array(Socket::IPAddress)?
     property isRegex : Bool?
     property isStrict : Bool?
     property withPort : Bool?
 
     def initialize
       @from = String.new
-      @to = String.new
+      @to = nil
+      @local = nil
       @isRegex = nil
       @isStrict = nil
       @withPort = nil
@@ -44,8 +44,6 @@ class Durian::Option
   end
 
   class Specify
-    include YAML::Serializable
-
     property from : String
     property through : Array(Tuple(Socket::IPAddress, Protocol))
     property isRegex : Bool?
