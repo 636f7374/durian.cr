@@ -246,6 +246,10 @@ class Durian::Resolver
     ip_address = Socket::IPAddress.new host, port rescue nil
     return Tuple.new Fetch::Local, [ip_address] if ip_address
 
+    # Fetch data from Mapping local
+    local = resolver.mapping_local? _mapping if _mapping
+    return Tuple.new Fetch::Local, local if local
+
     # Fetch data from IP cache
     from_ip_cache = fetch_ip_cache host, port, resolver.ip_cache
     return Tuple.new Fetch::Cache, from_ip_cache unless from_ip_cache.empty? if from_ip_cache
@@ -270,13 +274,14 @@ class Durian::Resolver
     Tuple.new Fetch::Remote, list
   end
 
-  def mapping?(host : String, port : Int32? = 0_i32) : Option::Mapping?
-    return if option.mapping.empty?
+  {% for name in ["mapping", "specify"] %}
+  def {{name.id}}?(host : String, port : Int32? = 0_i32) : Option::{{name.capitalize.id}}?
+    return if option.{{name.id}}.empty?
 
-    list = [] of Option::Mapping
+    list = [] of Option::{{name.capitalize.id}}
     address = String.build { |io| io << host << port }
 
-    option.mapping.each do |item|
+    option.{{name.id}}.each do |item|
       _address = item.withPort ? address : host
 
       case {!!item.isRegex, !!item.isStrict}
@@ -292,6 +297,7 @@ class Durian::Resolver
     return if list.empty?
     list.first
   end
+  {% end %}
 
   def mapping_to?(item, port : Int32 = 0_i32) : Tuple(String, Int32)?
     return unless to = item.to
@@ -307,27 +313,11 @@ class Durian::Resolver
     end
   end
 
-  def specify?(host : String, port : Int32? = 0_i32) : Option::Specify?
-    return if option.specify.empty?
+  def mapping_local?(item : Option::Mapping) : Array(Socket::IPAddress)?
+    return unless local = item.local
+    return if local.empty?
 
-    list = [] of Option::Specify
-    address = String.build { |io| io << host << port }
-
-    option.specify.each do |item|
-      _address = item.withPort ? address : host
-
-      case {!!item.isRegex, !!item.isStrict}
-      when {true, false}
-        break list << item if _address.match Regex.new item.from
-      when {false, false}
-        break list << item if _address.includes? item.from
-      when {false, true}
-        break list << item if _address.downcase == item.from.downcase
-      end
-    end
-
-    return if list.empty?
-    return list.first
+    local
   end
 
   def to_ip_address(host : String)
