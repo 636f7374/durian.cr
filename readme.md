@@ -1,7 +1,7 @@
 <div align = "center"><img src="images/icon.png" width="256" height="256" /></div>
 
 <div align = "center">
-  <h1>Durian.cr - DNS Resolver</h1>
+  <h1>Durian.cr - Domain Name System Resolver</h1>
 </div>
 
 <p align="center">
@@ -225,7 +225,8 @@ $ make test
 
 ## Credit
 
-* [\_Icon::wanicon/fruits](https://www.flaticon.com/packs/fruits-and-vegetables-48)
+* [\_Icon::Wanicon/Fruits](https://www.flaticon.com/packs/fruits-and-vegetables-48)
+* [\_Icon::Freepik/GraphicDesign](https://www.flaticon.com/packs/graphic-design-125)
 
 ## Contributors
 
