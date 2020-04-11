@@ -168,9 +168,7 @@ class Durian::Resolver
     ip_address = TCPSocket.try_connect_ip_address list, resolver.option.retry
     raise Socket::Error.new "IP address cannot connect" unless ip_address
 
-    ip_cache = resolver.ip_cache
-    ip_cache.try &.set host, ip_address
-
+    resolver.ip_cache.try &.set host, ip_address
     Tuple.new method, ip_address
   end
 
@@ -182,12 +180,11 @@ class Durian::Resolver
       return ::TCPSocket.new list.first.address, list.first.port, connect_timeout: connect_timeout || 5_i32
     end
 
-    choose = TCPSocket.choose_ip_address list, resolver.option.retry
+    choose = TCPSocket.choose_socket list, resolver.option.retry
     raise Socket::Error.new "IP address cannot connect" unless choose
 
     socket, ip_address = choose
-    ip_cache = resolver.ip_cache
-    ip_cache.try &.set host, ip_address
+    resolver.ip_cache.try &.set host, ip_address unless method.local?
 
     socket
   end
@@ -196,11 +193,10 @@ class Durian::Resolver
     method, list = getaddrinfo_all host, port, resolver
     raise Socket::Error.new "Invalid host address" if list.empty?
 
-    ip_cache = resolver.ip_cache
-    ip_cache.try &.set host, list.first
-
     socket = UDPSocket.new list.first.family
     socket.connect list.first
+
+    resolver.ip_cache.try &.set host, list unless method.local?
 
     socket
   end
@@ -268,9 +264,7 @@ class Durian::Resolver
       extract_all_ip_address host, port, resolve_response, list
     end
 
-    ip_cache = resolver.ip_cache
-    ip_cache.try &.set host, list unless list.empty?
-
+    resolver.ip_cache.try &.set host, list unless list.empty?
     Tuple.new Fetch::Remote, list
   end
 
@@ -343,6 +337,7 @@ class Durian::Resolver
   def cache_expires?(host, flags : Array(RecordFlag))
     expires = [] of RecordFlag
     return expires unless _cache = cache
+
     flags.each { |flag| expires << flag if _cache.expires? host, flag }
 
     expires
