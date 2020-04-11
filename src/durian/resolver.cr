@@ -239,16 +239,16 @@ class Durian::Resolver
 
   def self.getaddrinfo_all(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Array(Socket::IPAddress))
     _mapping = resolver.mapping? host, port
-    _address = resolver.mapping_to? _mapping, port if _mapping
-    host, port = _address if _address
-
-    # Test if it is an IP address
-    ip_address = Socket::IPAddress.new host, port rescue nil
-    return Tuple.new Fetch::Local, [ip_address] if ip_address
 
     # Fetch data from Mapping local
-    local = resolver.mapping_local? _mapping if _mapping
+    local = resolver.mapping_local? _mapping, port if _mapping
     return Tuple.new Fetch::Local, local if local
+
+    # Test if it is an IP address
+    _address = resolver.mapping_to? _mapping, port if _mapping
+    host, port = _address if _address
+    ip_address = Socket::IPAddress.new host, port rescue nil
+    return Tuple.new Fetch::Local, [ip_address] if ip_address
 
     # Fetch data from IP cache
     from_ip_cache = fetch_ip_cache host, port, resolver.ip_cache
@@ -313,9 +313,13 @@ class Durian::Resolver
     end
   end
 
-  def mapping_local?(item : Option::Mapping) : Array(Socket::IPAddress)?
+  def mapping_local?(item, port : Int32 = 0_i32) : Array(Socket::IPAddress)?
     return unless local = item.local
     return if local.empty?
+
+    unless !!item.withPort
+      return local.map { |_local| Socket::IPAddress.new _local.address, port }
+    end
 
     local
   end
