@@ -168,7 +168,7 @@ class Durian::Resolver
     ip_address = TCPSocket.try_connect_ip_address list, resolver.option.retry
     raise Socket::Error.new "IP address cannot connect" unless ip_address
 
-    resolver.ip_cache.try &.set host, ip_address
+    resolver.ip_cache.try &.set host, ip_address unless method.local?
     Tuple.new method, ip_address
   end
 
