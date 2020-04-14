@@ -1,20 +1,20 @@
 module Durian
   class Cache::IPAddress
-    property collects : Immutable::Map(String, Item)
+    property collects : Immutable::Map(String, Entry)
     property capacity : Int32
     property cleanInterval : Time::Span
     property recordExpires : Time::Span
     property cleanAt : Time
     property maximumCleanup : Int32
 
-    def initialize(@collects = Immutable::Map(String, Item).new, @capacity : Int32 = 256_i32,
+    def initialize(@collects = Immutable::Map(String, Entry).new, @capacity : Int32 = 256_i32,
                    @cleanInterval : Time::Span = 3600_i32.seconds, @recordExpires : Time::Span = 1800_i32.seconds)
       @cleanAt = Time.local
       @maximumCleanup = (capacity / 2_i32).to_i32
     end
 
     def insert(name : String, ip_address : Array(Socket::IPAddress))
-      insert = collects.set name, Item.new ip_address
+      insert = collects.set name, Entry.new ip_address
       @collects = insert
     end
 
@@ -159,7 +159,7 @@ module Durian
     end
     {% end %}
 
-    class Item
+    class Entry
       property ipAddress : Array(Socket::IPAddress)
       property accessAt : Time
       property tapCount : Int32

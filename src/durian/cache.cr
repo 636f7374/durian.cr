@@ -150,16 +150,16 @@ class Durian::Cache
   class RecordKind
     property accessAt : Time
     property tapCount : Int32
-    property a : Item?
-    property aaaa : Item?
-    property ns : Item?
-    property ptr : Item?
-    property cname : Item?
-    property soa : Item?
-    property txt : Item?
-    property mx : Item?
-    property dname : Item?
-    property srv : Item?
+    property a : Entry?
+    property aaaa : Entry?
+    property ns : Entry?
+    property ptr : Entry?
+    property cname : Entry?
+    property soa : Entry?
+    property txt : Entry?
+    property mx : Entry?
+    property dname : Entry?
+    property srv : Entry?
 
     def initialize(@accessAt : Time = Time.local, @tapCount : Int32 = 0_i32)
       @a = nil
@@ -184,7 +184,7 @@ class Durian::Cache
 
     {% for name in RecordType %}
       def create_{{name.downcase.id}}
-      	@{{name.downcase.id}} = Item.new
+      	@{{name.downcase.id}} = Entry.new
       end
       {% end %}
 
@@ -222,7 +222,7 @@ class Durian::Cache
       record? flag
     end
 
-    class Item
+    class Entry
       property packet : Durian::Packet::Response?
       property updateAt : Time
 
