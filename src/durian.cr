@@ -1,4 +1,5 @@
 require "immutable"
+require "coffee"
 require "yaml"
 
 require "./durian/extra/*"
