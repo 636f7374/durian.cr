@@ -8,7 +8,7 @@ class Durian::Cache
   property cleanAt : Time
   property maximumCleanup : Int32
 
-  def initialize(@collects = Immutable::Map(String, RecordKind).new, @capacity : Int32 = 256_i32,
+  def initialize(@collects : Immutable::Map(String, RecordKind) = Immutable::Map(String, RecordKind).new, @capacity : Int32 = 256_i32,
                  @cleanInterval : Time::Span = 3600_i32.seconds, @recordExpires : Time::Span = 1800_i32.seconds)
     @cleanAt = Time.local
     @maximumCleanup = (capacity / 2_i32).to_i32
@@ -27,7 +27,7 @@ class Durian::Cache
     capacity <= size
   end
 
-  def clean_expires?
+  def clean_expired?
     (Time.local - cleanAt) > cleanInterval
   end
 
@@ -61,14 +61,14 @@ class Durian::Cache
     value
   end
 
-  def expires?(name, flag : Durian::RecordFlag)
+  def expired?(name, flag : RecordFlag)
     return unless kind = collects[name]?
     return unless updated_at = kind.update_at? flag
 
     (Time.local - updated_at) > recordExpires
   end
 
-  def get(name, flag : Durian::RecordFlag)
+  def get(name, flag : RecordFlag)
     return unless kind = collects[name]?
     return unless _record = kind.record? flag
 
@@ -76,7 +76,7 @@ class Durian::Cache
     _record.packet
   end
 
-  def set(name : String, packet : Durian::Packet::Response, flag : Durian::RecordFlag)
+  def set(name : String, packet : Packet::Response, flag : RecordFlag)
     inactive_clean
 
     insert name unless collects[name]?
@@ -87,7 +87,7 @@ class Durian::Cache
     @collects = _collects
   end
 
-  private def set(kind : RecordKind, packet : Durian::Packet::Response, flag : Durian::RecordFlag)
+  private def set(kind : RecordKind, packet : Packet::Response, flag : RecordFlag)
     return unless item = kind.force_fetch flag
 
     item.packet = packet
@@ -103,7 +103,7 @@ class Durian::Cache
   end
 
   def inactive_clean
-    case {full?, clean_expires?}
+    case {full?, clean_expired?}
     when {true, false}
       clean_by_tap
       refresh
@@ -188,7 +188,7 @@ class Durian::Cache
       end
       {% end %}
 
-    def record?(flag : Durian::RecordFlag)
+    def record?(flag : RecordFlag)
       {% begin %}
         case flag
           {% for name in RecordType %}
@@ -199,7 +199,7 @@ class Durian::Cache
         {% end %}
     end
 
-    def create(flag : Durian::RecordFlag)
+    def create(flag : RecordFlag)
       {% begin %}
         case flag
           {% for name in RecordType %}
@@ -210,23 +210,23 @@ class Durian::Cache
         {% end %}
     end
 
-    def update_at?(flag : Durian::RecordFlag)
+    def update_at?(flag : RecordFlag)
       return unless _record = record? flag
 
       _record.updateAt
     end
 
-    def force_fetch(flag : Durian::RecordFlag)
+    def force_fetch(flag : RecordFlag)
       create flag unless record? flag
 
       record? flag
     end
 
     class Entry
-      property packet : Durian::Packet::Response?
+      property packet : Packet::Response?
       property updateAt : Time
 
-      def initialize(@packet : Durian::Packet::Response? = nil, @updateAt : Time = Time.local)
+      def initialize(@packet : Packet::Response? = nil, @updateAt : Time = Time.local)
       end
 
       def refresh

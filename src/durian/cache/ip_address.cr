@@ -7,7 +7,7 @@ module Durian
     property cleanAt : Time
     property maximumCleanup : Int32
 
-    def initialize(@collects = Immutable::Map(String, Entry).new, @capacity : Int32 = 256_i32,
+    def initialize(@collects : Immutable::Map(String, Entry) = Immutable::Map(String, Entry).new, @capacity : Int32 = 256_i32,
                    @cleanInterval : Time::Span = 3600_i32.seconds, @recordExpires : Time::Span = 1800_i32.seconds)
       @cleanAt = Time.local
       @maximumCleanup = (capacity / 2_i32).to_i32
@@ -26,7 +26,7 @@ module Durian
       capacity <= size
     end
 
-    def clean_expires?
+    def clean_expired?
       (Time.local - cleanAt) > cleanInterval
     end
 
@@ -64,7 +64,7 @@ module Durian
       value
     end
 
-    def expires?(name : String)
+    def expired?(name : String)
       return unless item = collects[name]?
       return true if item.ipAddress.empty?
 
@@ -116,7 +116,7 @@ module Durian
     end
 
     def inactive_clean
-      case {full?, clean_expires?}
+      case {full?, clean_expired?}
       when {true, false}
         clean_by_tap
         refresh

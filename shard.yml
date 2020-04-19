@@ -2,6 +2,8 @@ name: durian
 version: 0.1.1
 
 dependencies:
+  coffee:
+    github: 636f7374/coffee.cr
   immutable:
     github: lucaong/immutable
 

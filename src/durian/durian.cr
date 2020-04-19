@@ -7,6 +7,7 @@ module Durian
   end
 
   enum Fetch
+    Coffee
     Local
     Cache
     Remote

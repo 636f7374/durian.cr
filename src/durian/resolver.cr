@@ -37,6 +37,14 @@ class Durian::Resolver
     @ip_cache
   end
 
+  def coffee=(value : Coffee::Scanner)
+    @coffee = value
+  end
+
+  def coffee
+    @coffee
+  end
+
   def resolve_by_flag!(specify : Array(Tuple(Socket::IPAddress, Protocol))?, host : String,
                        flag : RecordFlag, strict_answer : Bool = false) : Packet::Response?
     servers = specify || dnsServers
@@ -155,7 +163,7 @@ class Durian::Resolver
 
   def self.fetch_ip_cache(host : String, port : Int32, ip_cache : Cache::IPAddress?)
     return unless ip_cache
-    return if ip_cache.expires? host
+    return if ip_cache.expired? host
 
     ip_cache.get host, port
   end
@@ -163,6 +171,7 @@ class Durian::Resolver
   def self.getaddrinfo!(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Socket::IPAddress)
     method, list = getaddrinfo_all host, port, resolver
     raise Socket::Error.new "Invalid host address" if list.empty?
+
     return Tuple.new method, list.first if 1_i32 == list.size || resolver.option.retry.nil?
 
     ip_address = TCPSocket.try_connect_ip_address list, resolver.option.retry
@@ -233,7 +242,21 @@ class Durian::Resolver
     yield getaddrinfo_all host, port, resolver
   end
 
+  def self.from_cloudflare(host : String, port : Int32, resolver : Resolver) : Array(Socket::IPAddress)?
+    return unless resolver.cloudflare? host, port
+    return unless cache = resolver.try &.coffee.try &.cache
+    return unless list = cache.to_ip_address port
+    return if list.empty?
+
+    list
+  end
+
   def self.getaddrinfo_all(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Array(Socket::IPAddress))
+    # Fetch data from Cloudflare
+    _from_cloudflare = from_cloudflare host, port, resolver
+    return Tuple.new Fetch::Coffee, _from_cloudflare if _from_cloudflare
+
+    # Mapping
     _mapping = resolver.mapping? host, port
 
     # Fetch data from Mapping local
@@ -268,7 +291,7 @@ class Durian::Resolver
     Tuple.new Fetch::Remote, list
   end
 
-  {% for name in ["mapping", "specify"] %}
+  {% for name in ["mapping", "specify", "cloudflare"] %}
   def {{name.id}}?(host : String, port : Int32? = 0_i32) : Option::{{name.capitalize.id}}?
     return if option.{{name.id}}.empty?
 
@@ -338,7 +361,7 @@ class Durian::Resolver
     expires = [] of RecordFlag
     return expires unless _cache = cache
 
-    flags.each { |flag| expires << flag if _cache.expires? host, flag }
+    flags.each { |flag| expires << flag if _cache.expired? host, flag }
 
     expires
   end

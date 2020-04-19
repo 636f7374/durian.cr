@@ -1,6 +1,7 @@
 class Durian::Option
   include YAML::Serializable
 
+  property cloudflare : Array(Cloudflare)
   property timeout : TimeOut
   property addrinfo : Addrinfo
   property retry : Retry?
@@ -8,6 +9,7 @@ class Durian::Option
   property specify : Array(Specify)
 
   def initialize
+    @cloudflare = [] of Cloudflare
     @timeout = TimeOut.new
     @addrinfo = Addrinfo.new
     @retry = nil
@@ -86,6 +88,22 @@ class Durian::Option
       @read = 2_i32
       @write = 2_i32
       @connect = 5_i32
+    end
+  end
+
+  class Cloudflare
+    include YAML::Serializable
+
+    property from : String
+    property isRegex : Bool?
+    property isStrict : Bool?
+    property withPort : Bool?
+
+    def initialize
+      @from = String.new
+      @isRegex = nil
+      @isStrict = nil
+      @withPort = nil
     end
   end
 end
