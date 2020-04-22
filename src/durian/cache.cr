@@ -184,7 +184,7 @@ class Durian::Cache
 
     {% for name in RecordType %}
       def create_{{name.downcase.id}}
-      	@{{name.downcase.id}} = Entry.new
+      	self.{{name.downcase.id}} = Entry.new
       end
       {% end %}
 

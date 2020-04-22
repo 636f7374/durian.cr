@@ -17,8 +17,8 @@ class Durian::Resolver
     @option = Option.new
   end
 
-  def self.new(dnsServer : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32), protocol : Protocol = Protocol::UDP)
-    new [Tuple.new dnsServer, protocol]
+  def self.new(dns_server : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32), protocol : Protocol = Protocol::UDP)
+    new [Tuple.new dns_server, protocol]
   end
 
   def cache=(value : Cache)
@@ -177,7 +177,6 @@ class Durian::Resolver
     ip_address = TCPSocket.try_connect_ip_address list, resolver.option.retry
     raise Socket::Error.new "IP address cannot connect" unless ip_address
 
-    resolver.ip_cache.try &.set host, ip_address unless method.local?
     Tuple.new method, ip_address
   end
 
@@ -193,7 +192,6 @@ class Durian::Resolver
     raise Socket::Error.new "IP address cannot connect" unless choose
 
     socket, ip_address = choose
-    resolver.ip_cache.try &.set host, ip_address unless method.local?
 
     socket
   end
@@ -205,33 +203,31 @@ class Durian::Resolver
     socket = UDPSocket.new list.first.family
     socket.connect list.first
 
-    resolver.ip_cache.try &.set host, list unless method.local?
-
     socket
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress? = nil,
-                           dnsServer : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32),
+                           dns_server : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32),
                            protocol : Protocol = Protocol::UDP,
                            &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
-    yield getaddrinfo_all host, port, ip_cache, [Tuple.new dnsServer, protocol]
+    yield getaddrinfo_all host, port, ip_cache, [Tuple.new dns_server, protocol]
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress? = nil,
-                           dnsServer : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32),
+                           dns_server : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32),
                            protocol : Protocol = Protocol::UDP) : Tuple(Fetch, Array(Socket::IPAddress))
-    getaddrinfo_all host, port, ip_cache, [Tuple.new dnsServer, protocol]
+    getaddrinfo_all host, port, ip_cache, [Tuple.new dns_server, protocol]
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress?,
-                           dnsServers : Array(Tuple(Socket::IPAddress, Protocol)),
+                           dns_server : Array(Tuple(Socket::IPAddress, Protocol)),
                            &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
-    yield getaddrinfo_all host, port, ip_cache, dnsServers
+    yield getaddrinfo_all host, port, ip_cache, dns_server
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress?,
-                           dnsServers : Array(Tuple(Socket::IPAddress, Protocol))) : Tuple(Fetch, Array(Socket::IPAddress))
-    resolver = new dnsServers
+                           dns_server : Array(Tuple(Socket::IPAddress, Protocol))) : Tuple(Fetch, Array(Socket::IPAddress))
+    resolver = new dns_server
     resolver.ip_cache = ip_cache if ip_cache
 
     getaddrinfo_all host, port, resolver
@@ -346,15 +342,11 @@ class Durian::Resolver
   end
 
   def set_cache(host, packet : Packet::Response, flag : RecordFlag)
-    return unless _cache = cache
-
-    _cache.set host, packet, flag
+    cache.try &.set host, packet, flag
   end
 
   def fetch_raw_cache(host, flag : RecordFlag)
-    return unless _cache = cache
-
-    _cache.get host, flag
+    cache.try &.get host, flag
   end
 
   def cache_expires?(host, flags : Array(RecordFlag))
