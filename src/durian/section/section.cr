@@ -43,5 +43,3 @@ module Durian::Section
     Durian.decode_address_by_pointer buffer, slice[1_i32]
   end
 end
-
-require "./section/*"

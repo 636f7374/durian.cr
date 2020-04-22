@@ -1,11 +1,12 @@
-class Durian::Record::A < Durian::Record
-  property ipv4Address : String
+class Durian::Record
+  class A < Durian::Record
+    property ipv4Address : String
 
-  def initialize(@ipv4Address : String = String.new, @cls : Cls = Cls::Internet, @ttl : UInt32 = 0_u32, @from : String? = nil)
-    @flag = RecordFlag::A
-  end
+    def initialize(@ipv4Address : String = String.new, @cls : Cls = Cls::Internet, @ttl : UInt32 = 0_u32, @from : String? = nil)
+      @flag = RecordFlag::A
+    end
 
-  {% for name in ["authority", "answer", "additional"] %}
+    {% for name in ["authority", "answer", "additional"] %}
   def self.{{name.id}}_from_io?(resource_record : A, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
     data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
     buffer.write_bytes data_length, IO::ByteFormat::BigEndian
@@ -27,4 +28,5 @@ class Durian::Record::A < Durian::Record
     decode
   end
   {% end %}
+  end
 end

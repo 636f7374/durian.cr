@@ -8,5 +8,3 @@ abstract class Durian::Record
     @flag = RecordFlag::ANY
   end
 end
-
-require "./record/*"

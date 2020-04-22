@@ -1,5 +1,3 @@
-require "./durian.cr"
-
 class Durian::Cache
   property collects : Immutable::Map(String, RecordKind)
   property capacity : Int32
@@ -235,5 +233,3 @@ class Durian::Cache
     end
   end
 end
-
-require "./cache/*"

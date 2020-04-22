@@ -1,13 +1,14 @@
-class Durian::Record::MX < Durian::Record
-  property mailExchange : String
-  property preference : UInt16
+class Durian::Record
+  class MX < Durian::Record
+    property mailExchange : String
+    property preference : UInt16
 
-  def initialize(@mailExchange : String = String.new, @cls : Cls = Cls::Internet, @ttl : UInt32 = 0_u32, @from : String? = nil)
-    @flag = RecordFlag::MX
-    @preference = 0_u32
-  end
+    def initialize(@mailExchange : String = String.new, @cls : Cls = Cls::Internet, @ttl : UInt32 = 0_u32, @from : String? = nil)
+      @flag = RecordFlag::MX
+      @preference = 0_u32
+    end
 
-  {% for name in ["authority", "answer", "additional"] %}
+    {% for name in ["authority", "answer", "additional"] %}
   def self.{{name.id}}_from_io?(resource_record : MX, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
     data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
     buffer.write_bytes data_length, IO::ByteFormat::BigEndian
@@ -19,4 +20,5 @@ class Durian::Record::MX < Durian::Record
     resource_record.mailExchange = Durian.decode_address data_buffer, buffer
   end
   {% end %}
+  end
 end

@@ -51,5 +51,3 @@ module Durian
     end
   end
 end
-
-require "./network/*"

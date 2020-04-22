@@ -57,5 +57,3 @@ module Durian::Packet
     NotZone
   end
 end
-
-require "./packet/*"

@@ -1,5 +1,3 @@
-require "../section.cr"
-
 module Durian::Packet
   class Request
     property protocol : Protocol
