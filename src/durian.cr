@@ -1,3 +1,6 @@
+require "socket"
+require "http/client"
+
 require "immutable"
 require "coffee"
 require "yaml"
