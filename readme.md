@@ -56,6 +56,8 @@
   * `C.getaddrinfo` is too bad, you should not use it in green thread.
   * (libuv `uv_getaddrinfo`, libevent `evdns_getaddrinfo`) is too complicated, you may encounter many problems.
 * Why is it named `Durian.cr`? it's just random six-word English words.
+* Some functions can be replaced by bit operations, but I do n’t know much about bit operations. 
+  * If you know bit operations well, you can help me improve it.
 
 ## Next
 
