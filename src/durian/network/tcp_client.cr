@@ -1,21 +1,20 @@
-module Durian
-  class Network::TCPClient < Network
+class Durian::Network
+  class TCPClient < Network
     property address : Socket::IPAddress
     property connectTimeout : Time::Span
 
     def initialize(@address : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32), @connectTimeout : Time::Span = 5_i32.seconds)
     end
 
-    def socket=(value : ::TCPSocket)
+    def socket=(value : TCPSocket)
       @socket = value
     end
 
-    def socket : ::TCPSocket
-      if _socket = @socket
-        return _socket
-      end
+    def socket : TCPSocket
+      _socket = @socket
+      return _socket if _socket
 
-      socket = ::TCPSocket.new address, connectTimeout, connectTimeout
+      socket = TCPSocket.new address, connectTimeout, connectTimeout
 
       socket.read_timeout = read_timeout
       socket.write_timeout = write_timeout

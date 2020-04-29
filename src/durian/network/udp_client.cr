@@ -1,20 +1,19 @@
-module Durian
-  class Network::UDPClient < Network
+class Durian::Network
+  class UDPClient < Network
     property address : Socket::IPAddress
 
     def initialize(@address : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32))
     end
 
-    def socket=(value : ::UDPSocket)
+    def socket=(value : UDPSocket)
       @socket = value
     end
 
-    def socket : ::UDPSocket
-      if _socket = @socket
-        return _socket
-      end
+    def socket : UDPSocket
+      _socket = @socket
+      return _socket if _socket
 
-      socket = ::UDPSocket.new address.family
+      socket = UDPSocket.new address.family
 
       socket.read_timeout = read_timeout
       socket.write_timeout = write_timeout

@@ -1,5 +1,5 @@
-module Durian
-  class Cache::IPAddress
+class Durian::Cache
+  class IPAddress
     property collects : Immutable::Map(String, Entry)
     property capacity : Int32
     property cleanInterval : Time::Span
