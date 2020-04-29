@@ -3,7 +3,6 @@ class Durian::Resolver
 
   alias ResolveResponse = Array(Tuple(String, RecordFlag, Packet::Response))
   alias ResolveTask = Tuple(Array(RecordFlag), Bool, Proc(ResolveResponse, Nil))
-  alias NetworkClient = Network::TCPClient | Network::UDPClient
   alias AliasServer = Hash(String, String | Array(Socket::IPAddress))
 
   property dnsServers : Array(Tuple(Socket::IPAddress, Protocol))
@@ -50,7 +49,7 @@ class Durian::Resolver
     servers = specify || dnsServers
 
     servers.each do |server|
-      socket = Network.create_client server, option.timeout rescue nil
+      socket = Network.create server, option.timeout rescue nil
       next unless socket
 
       packet = resolve_by_flag! socket, host, flag rescue nil
@@ -69,8 +68,8 @@ class Durian::Resolver
     end
   end
 
-  def get_socket_protocol(socket : NetworkClient)
-    socket.is_a?(Network::TCPClient) ? Protocol::TCP : Protocol::UDP
+  def get_socket_protocol(socket : IPSocket)
+    socket.is_a?(TCPSocket) ? Protocol::TCP : Protocol::UDP
   end
 
   def mismatch_retry
@@ -79,29 +78,28 @@ class Durian::Resolver
     retry.mismatch
   end
 
-  def resolve_by_flag!(socket : NetworkClient, host : String,
-                       flag : RecordFlag, strict_answer : Bool = false) : Packet::Response?
+  def resolve_by_flag!(socket : IPSocket, host : String, flag : RecordFlag, strict_answer : Bool = false) : Packet::Response?
     buffer = uninitialized UInt8[4096_i32]
-    protocol = get_socket_protocol(socket) || Protocol::UDP
+    protocol = get_socket_protocol socket
 
     request = Packet::Request.new protocol
     request.add_query host, flag
-    socket.send request.to_slice
+    socket.write request.to_slice
 
     mismatch_retry.times do
-      length, address = socket.receive buffer.to_slice
-      length = 0_i32 unless length
+      length = socket.read buffer.to_slice
+      break if length.zero? && protocol.tcp?
 
       io = IO::Memory.new buffer.to_slice[0_i32, length]
       response = Packet::Response.from_io io, protocol
-      io.close
 
       unless response
-        next if socket.is_a? Network::UDPClient
-        return
+        next if protocol.udp?
+
+        break
       end
 
-      return response if request.transId == response.transId
+      break response if request.transId == response.transId
     end
   end
 
