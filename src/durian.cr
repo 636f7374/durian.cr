@@ -7,7 +7,6 @@ require "yaml"
 
 require "./durian/socket/*"
 require "./durian/extra/*"
-require "./durian/network/*"
 require "./durian/*"
 require "./durian/section/*"
 require "./durian/packet/*"
