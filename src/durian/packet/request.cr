@@ -9,7 +9,6 @@ module Durian::Packet
     property authenticatedData : AuthenticatedData
     property questionCount : UInt16
     property buffer : IO::Memory?
-    property random : Random
 
     def initialize(@protocol : Protocol = Protocol::UDP)
       @queries = [] of Section::Question
@@ -20,7 +19,6 @@ module Durian::Packet
       @authenticatedData = AuthenticatedData::False
       @questionCount = 0_u16
       @buffer = nil
-      @random = Random.new
     end
 
     def add_query(query : String, flag : RecordFlag)
@@ -41,26 +39,26 @@ module Durian::Packet
     {% end %}
 
     private def self.parse_flags_count!(request : Request, io, buffer : IO)
-      static_bits = ByteFormat.extract_uint16_bits io, buffer
-      bits_io = IO::Memory.new static_bits.to_slice
+      begin
+        flags = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+      rescue ex
+        raise BadPacket.new ex.message
+      end
 
-      qr_flags = bits_io.read_byte || 0_u8
-      raise MalformedPacket.new "Non-request Packet" if qr_flags != 0_i32
+      buffer.write_bytes flags, IO::ByteFormat::BigEndian
 
-      operation_code = ByteFormat.parse_four_bit_integer bits_io
-      authoritative_answer = bits_io.read_byte || 0_u8
-      truncated = bits_io.read_byte || 0_u8
-      recursion_desired = bits_io.read_byte || 0_u8
-      recursion_available = bits_io.read_byte || 0_u8
-      zero = bits_io.read_byte || 0_u8
-      authenticated_data = bits_io.read_byte || 0_u8
-      checking_disabled = bits_io.read_byte || 0_u8
-      response_code = ByteFormat.parse_four_bit_integer bits_io
+      # QrFlag
+      raise MalformedPacket.new "Non-request Packet" if (flags & 0x8000_u16) == 0x8000_u16
 
-      request.operationCode = OperationCode.new operation_code
-      request.truncated = Truncated.new truncated.to_i32
-      request.recursionDesired = RecursionDesired.new recursion_desired.to_i32
-      request.authenticatedData = AuthenticatedData.new authenticated_data.to_i32
+      # Miscellaneous
+      request.operationCode = OperationCode.new (flags >> 11_i32) & 0x0f_u16
+      authoritative_answer = AuthoritativeAnswer.new flags & 0x0400_u16
+      request.truncated = Truncated.new flags & 0x0200_u16
+      request.recursionDesired = RecursionDesired.new flags & 0x0100_u16
+      recursion_available = RecursionAvailable.new flags & 0x0080_u16
+      response.authenticatedData = AuthenticatedData.new flags & 0x0020_u16
+      checking_disabled = CheckingDisabled.new flags & 0x0010_u16
+      response_code = ResponseCode.new flags & 0x0f_u16
 
       request.questionCount = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       answer_count = io.read_bytes UInt16, IO::ByteFormat::BigEndian
@@ -134,7 +132,7 @@ module Durian::Packet
 
     def to_udp_io(io : IO)
       # Identification field is used to match up replies and requests.
-      @transId = random.rand UInt16 unless transId
+      @transId = Random.new.rand UInt16 unless transId
       if _trans_id = transId
         io.write_bytes _trans_id, IO::ByteFormat::BigEndian
       end

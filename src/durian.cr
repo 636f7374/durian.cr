@@ -1,9 +1,9 @@
 require "socket"
 require "http/client"
+require "yaml"
 
 require "immutable"
 require "coffee"
-require "yaml"
 
 require "./durian/socket/*"
 require "./durian/extra/*"

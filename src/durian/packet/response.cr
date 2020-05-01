@@ -19,7 +19,6 @@ module Durian::Packet
     property authorityCount : UInt16
     property additionalCount : UInt16
     property buffer : IO::Memory?
-    property random : Random
 
     def initialize(@protocol : Protocol = Protocol::UDP)
       @queries = [] of Section::Question
@@ -40,35 +39,31 @@ module Durian::Packet
       @authorityCount = 0_u16
       @additionalCount = 0_u16
       @buffer = nil
-      @random = Random.new
     end
 
     private def self.parse_flags_count!(response : Response, io, buffer : IO)
-      static_bits = ByteFormat.extract_uint16_bits io, buffer
-      bits_io = IO::Memory.new static_bits.to_slice
+      begin
+        flags = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+      rescue ex
+        raise BadPacket.new ex.message
+      end
 
-      qr_flags = bits_io.read_byte || 0_u8
-      raise MalformedPacket.new "Non-response Packet" if qr_flags != 1_i32
+      buffer.write_bytes flags, IO::ByteFormat::BigEndian
 
-      operation_code = ByteFormat.parse_four_bit_integer bits_io
-      authoritative_answer = bits_io.read_byte || 0_u8
-      truncated = bits_io.read_byte || 0_u8
-      recursion_desired = bits_io.read_byte || 0_u8
-      recursion_available = bits_io.read_byte || 0_u8
-      zero = bits_io.read_byte || 0_u8
-      authenticated_data = bits_io.read_byte || 0_u8
-      checking_disabled = bits_io.read_byte || 0_u8
-      response_code = ByteFormat.parse_four_bit_integer bits_io
+      # QrFlag
+      raise MalformedPacket.new "Non-response Packet" if (flags & 0x8000_u16) != 0x8000_u16
 
-      response.operationCode = OperationCode.new operation_code
-      response.authoritativeAnswer = AuthoritativeAnswer.new authoritative_answer.to_i32
-      response.truncated = Truncated.new truncated.to_i32
-      response.recursionDesired = RecursionDesired.new recursion_desired.to_i32
-      response.recursionAvailable = RecursionAvailable.new recursion_available.to_i32
-      response.authenticatedData = AuthenticatedData.new authenticated_data.to_i32
-      response.checkingDisabled = CheckingDisabled.new checking_disabled.to_i32
-      response.responseCode = ResponseCode.new response_code
+      # Miscellaneous
+      response.operationCode = OperationCode.new (flags >> 11_i32) & 0x0f_u16
+      response.authoritativeAnswer = AuthoritativeAnswer.new flags & 0x0400_u16
+      response.truncated = Truncated.new flags & 0x0200_u16
+      response.recursionDesired = RecursionDesired.new flags & 0x0100_u16
+      response.recursionAvailable = RecursionAvailable.new flags & 0x0080_u16
+      response.authenticatedData = AuthenticatedData.new flags & 0x0020_u16
+      response.checkingDisabled = CheckingDisabled.new flags & 0x0010_u16
+      response.responseCode = ResponseCode.new flags & 0x0f_u16
 
+      # Count
       response.questionCount = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       response.answerCount = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       response.authorityCount = io.read_bytes UInt16, IO::ByteFormat::BigEndian

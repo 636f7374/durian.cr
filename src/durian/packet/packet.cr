@@ -1,59 +1,59 @@
 module Durian::Packet
-  enum QRFlag
-    Query
-    Response
+  enum QRFlag : UInt16
+    Query    = 0_u16
+    Response = 1_u16
   end
 
-  enum OperationCode
-    StandardQuery
-    InverseQuery
-    Status
-    Reserved
-    Notify
-    Update
+  enum OperationCode : UInt16
+    StandardQuery = 0_u16
+    InverseQuery  = 1_u16
+    Status        = 2_u16
+    Reserved      = 3_u16
+    Notify        = 4_u16
+    Update        = 5_u16
   end
 
-  enum AuthoritativeAnswer
-    False
-    True
+  enum AuthoritativeAnswer : UInt16
+    False = 0_u16
+    True  = 1_u16
   end
 
-  enum Truncated
-    False
-    True
+  enum Truncated : UInt16
+    False = 0_u16
+    True  = 1_u16
   end
 
-  enum RecursionDesired
-    False
-    True
+  enum RecursionDesired : UInt16
+    False = 0_u16
+    True  = 1_u16
   end
 
-  enum RecursionAvailable
-    False
-    True
+  enum RecursionAvailable : UInt16
+    False = 0_u16
+    True  = 1_u16
   end
 
-  enum AuthenticatedData
-    False
-    True
+  enum AuthenticatedData : UInt16
+    False = 0_u16
+    True  = 1_u16
   end
 
-  enum CheckingDisabled
-    False
-    True
+  enum CheckingDisabled : UInt16
+    False = 0_u16
+    True  = 1_u16
   end
 
-  enum ResponseCode
-    NoError
-    FormatError
-    ServerFailure
-    NameError
-    NotImplemented
-    Refused
-    YXDomain
-    YXRRSet
-    NXRRSet
-    NotAuth
-    NotZone
+  enum ResponseCode : UInt16
+    NoError        =  0_u16
+    FormatError    =  1_u16
+    ServerFailure  =  2_u16
+    NameError      =  3_u16
+    NotImplemented =  4_u16
+    Refused        =  5_u16
+    YXDomain       =  6_u16
+    YXRRSet        =  7_u16
+    NXRRSet        =  8_u16
+    NotAuth        =  9_u16
+    NotZone        = 10_u16
   end
 end

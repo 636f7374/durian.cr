@@ -124,6 +124,9 @@ module Durian
   class PacketTypeError < Exception
   end
 
+  class BadPacket < Exception
+  end
+
   def limit_length_buffer(io : IO) : IO::Memory
     chunk_length = uninitialized UInt8[1_i32]
     length = io.read chunk_length.to_slice
