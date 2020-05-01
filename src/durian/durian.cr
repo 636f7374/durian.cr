@@ -118,12 +118,6 @@ module Durian
   class UnknownSection < Exception
   end
 
-  class NilAddress < Exception
-  end
-
-  class PacketTypeError < Exception
-  end
-
   class BadPacket < Exception
   end
 
