@@ -1,7 +1,7 @@
 class Durian::Resolver
   IPAddressRecordFlags = [RecordFlag::A, RecordFlag::AAAA]
 
-  alias ResolveResponse = Array(Tuple(String, RecordFlag, Packet::Response))
+  alias ResolveResponse = Array(Tuple(String, RecordFlag, Packet))
   alias ResolveTask = Tuple(Array(RecordFlag), Bool, Proc(ResolveResponse, Nil))
   alias AliasServer = Hash(String, String | Array(Socket::IPAddress))
 
@@ -45,7 +45,7 @@ class Durian::Resolver
   end
 
   def resolve_by_flag!(specify : Array(Tuple(Socket::IPAddress, Protocol))?, host : String,
-                       flag : RecordFlag, strict_answer : Bool = false) : Packet::Response?
+                       flag : RecordFlag, strict_answer : Bool = false) : Packet?
     servers = specify || dnsServers
 
     servers.each do |server|
@@ -78,11 +78,11 @@ class Durian::Resolver
     retry.mismatch
   end
 
-  def resolve_by_flag!(socket : IPSocket, host : String, flag : RecordFlag, strict_answer : Bool = false) : Packet::Response?
+  def resolve_by_flag!(socket : IPSocket, host : String, flag : RecordFlag, strict_answer : Bool = false) : Packet?
     buffer = uninitialized UInt8[4096_i32]
     protocol = get_socket_protocol socket
 
-    request = Packet::Request.new protocol
+    request = Packet.new protocol: protocol, qrFlag: Packet::QRFlag::Query
     request.add_query host, flag
     socket.write request.to_slice
 
@@ -91,7 +91,7 @@ class Durian::Resolver
       break if length.zero? && protocol.tcp?
 
       io = IO::Memory.new buffer.to_slice[0_i32, length]
-      response = Packet::Response.from_io io, protocol
+      response = Packet.from_io protocol: protocol, qr_flag: Packet::QRFlag::Response, io: io
 
       unless response
         next if protocol.udp?
@@ -302,6 +302,7 @@ class Durian::Resolver
         break list << item if _address.includes? item.from
       when {false, true}
         break list << item if _address.downcase == item.from.downcase
+      else
       end
     end
 
@@ -339,7 +340,7 @@ class Durian::Resolver
     Socket::IPAddress.new host, 0_i32 rescue nil
   end
 
-  def set_cache(host, packet : Packet::Response, flag : RecordFlag)
+  def set_cache(host, packet : Packet, flag : RecordFlag)
     cache.try &.set host, packet, flag
   end
 
@@ -371,7 +372,7 @@ class Durian::Resolver
   end
 
   def resolve_task(specify : Array(Tuple(Socket::IPAddress, Protocol))?, host : String, task : ResolveTask)
-    packets = [] of Tuple(String, RecordFlag, Packet::Response)
+    packets = [] of Tuple(String, RecordFlag, Packet)
     flags, strict_answer, proc = task
 
     cache_fetch = fetch_cache host, flags, packets

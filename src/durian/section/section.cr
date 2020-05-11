@@ -3,10 +3,11 @@ module Durian::Section
   def self.decode_record_{{name.id}}(resource_record : Record, io : IO, buffer : IO)
     {% begin %}
     case resource_record
-      {% for record_type in RecordType %}
+      {% for record_type in AvailableRecordFlag %}
     when Record::{{record_type.upcase.id}}
         Record::{{record_type.id}}.{{name.id}}_from_io? resource_record, io, buffer
       {% end %}
+    else
     end
     {% end %}
   end
@@ -15,7 +16,7 @@ module Durian::Section
   def self.new_resource_record(flag : RecordFlag)
     {% begin %}
       case flag
-      	 {% for name in RecordType %}
+      	 {% for name in AvailableRecordFlag %}
       when .{{name.downcase.id}}?
         Record::{{name.upcase.id}}.new
       {% end %}
