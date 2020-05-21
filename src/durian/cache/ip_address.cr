@@ -1,21 +1,21 @@
 class Durian::Cache
   class IPAddress
-    property collects : Immutable::Map(String, Entry)
+    property storage : Immutable::Map(String, Entry)
     property capacity : Int32
     property cleanInterval : Time::Span
     property recordExpires : Time::Span
     property cleanAt : Time
     property maximumCleanup : Int32
 
-    def initialize(@collects : Immutable::Map(String, Entry) = Immutable::Map(String, Entry).new, @capacity : Int32 = 256_i32,
+    def initialize(@storage : Immutable::Map(String, Entry) = Immutable::Map(String, Entry).new, @capacity : Int32 = 256_i32,
                    @cleanInterval : Time::Span = 3600_i32.seconds, @recordExpires : Time::Span = 1800_i32.seconds)
       @cleanAt = Time.local
       @maximumCleanup = (capacity / 2_i32).to_i32
     end
 
     def insert(name : String, ip_address : Array(Socket::IPAddress))
-      insert = collects.set name, Entry.new ip_address
-      @collects = insert
+      insert = storage.set name, Entry.new ip_address
+      @storage = insert
     end
 
     def refresh
@@ -31,7 +31,7 @@ class Durian::Cache
     end
 
     def reset
-      @collects = collects.clear
+      @storage = storage.clear
     end
 
     def []=(name, value : Socket::IPAddress)
@@ -43,7 +43,7 @@ class Durian::Cache
     end
 
     def [](name : String)
-      value = collects[name]
+      value = storage[name]
 
       if value
         value.refresh
@@ -54,7 +54,7 @@ class Durian::Cache
     end
 
     def []?(name : String)
-      value = collects[name]?
+      value = storage[name]?
 
       if value
         value.refresh
@@ -65,19 +65,19 @@ class Durian::Cache
     end
 
     def expired?(name : String)
-      return unless item = collects[name]?
-      return true if item.ipAddress.empty?
+      return unless entry = storage[name]?
+      return true if entry.ipAddress.empty?
 
-      (Time.local - item.accessAt) > recordExpires
+      (Time.local - entry.accessAt) > recordExpires
     end
 
     def get(name : String, port : Int32) : Array(Socket::IPAddress)?
-      return unless item = collects[name]?
+      return unless entry = storage[name]?
 
-      item.refresh ensure item.tap
+      entry.refresh ensure entry.tap
       address = [] of Socket::IPAddress
 
-      item.ipAddress.each do |ip_address|
+      entry.ipAddress.each do |ip_address|
         address << Socket::IPAddress.new ip_address.address, port
       end
 
@@ -86,10 +86,10 @@ class Durian::Cache
     end
 
     def get(name : String) : Array(Socket::IPAddress)?
-      return unless item = collects[name]?
+      return unless entry = storage[name]?
 
-      item.refresh ensure item.tap
-      item.ipAddress
+      entry.refresh ensure entry.tap
+      entry.ipAddress
     end
 
     def set(name : String, ip_address : Socket::IPAddress)
@@ -100,19 +100,19 @@ class Durian::Cache
       return if ip_address.empty?
       inactive_clean
 
-      insert name, ip_address unless item = collects[name]?
-      return unless item = collects[name]?
+      insert name, ip_address unless entry = storage[name]?
+      return unless entry = storage[name]?
 
-      item.ipAddress = ip_address
-      item.refresh
+      entry.ipAddress = ip_address
+      entry.refresh
     end
 
     def size
-      collects.size
+      storage.size
     end
 
     def empty?
-      collects.empty?
+      storage.empty?
     end
 
     def inactive_clean
@@ -135,13 +135,13 @@ class Durian::Cache
       {% end %}
 
       _maximum = maximumCleanup - 1_i32
-      _collects = collects
+      _storage = storage
 
-      _collects.each do |name, item|
+      _storage.each do |name, entry|
       	{% if name.id == "access_at" %}
-          temporary << Tuple.new item.accessAt, name
+          temporary << Tuple.new entry.accessAt, name
       	{% elsif name.id == "tap" %}
-      	  temporary << Tuple.new item.tapCount, name
+      	  temporary << Tuple.new entry.tapCount, name
       	{% end %}
       end
 
@@ -151,10 +151,10 @@ class Durian::Cache
 
       _sort.each_with_index do |sort, index|
         break if index > _maximum
-        _collects = _collects.delete sort.last
+        _storage = _storage.delete sort.last
       end
 
-      @collects = _collects
+      @storage = _storage
       temporary.clear ensure _sort.clear
     end
     {% end %}

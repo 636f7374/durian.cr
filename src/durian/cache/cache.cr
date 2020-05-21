@@ -1,20 +1,20 @@
 class Durian::Cache
-  property collects : Immutable::Map(String, Entry)
+  property storage : Immutable::Map(String, Entry)
   property capacity : Int32
   property cleanInterval : Time::Span
   property recordExpires : Time::Span
   property cleanAt : Time
   property maximumCleanup : Int32
 
-  def initialize(@collects : Immutable::Map(String, Entry) = Immutable::Map(String, Entry).new, @capacity : Int32 = 256_i32,
+  def initialize(@storage : Immutable::Map(String, Entry) = Immutable::Map(String, Entry).new, @capacity : Int32 = 256_i32,
                  @cleanInterval : Time::Span = 3600_i32.seconds, @recordExpires : Time::Span = 1800_i32.seconds)
     @cleanAt = Time.local
     @maximumCleanup = (capacity / 2_i32).to_i32
   end
 
   def insert(name : String)
-    insert = collects.set name, Entry.new
-    @collects = insert
+    insert = storage.set name, Entry.new
+    @storage = insert
   end
 
   def refresh
@@ -30,7 +30,7 @@ class Durian::Cache
   end
 
   def reset
-    @collects = collects.clear
+    @storage = storage.clear
   end
 
   def []=(name, value : Entry)
@@ -38,7 +38,7 @@ class Durian::Cache
   end
 
   def [](name : String)
-    value = collects[name]
+    value = storage[name]
 
     if value
       value.refresh
@@ -49,7 +49,7 @@ class Durian::Cache
   end
 
   def []?(name : String)
-    value = collects[name]?
+    value = storage[name]?
 
     if value
       value.refresh
@@ -60,44 +60,44 @@ class Durian::Cache
   end
 
   def expired?(name, flag : RecordFlag)
-    return unless kind = collects[name]?
-    return unless updated_at = kind.update_at? flag
+    return unless entry = storage[name]?
+    return unless updated_at = entry.update_at? flag
 
     (Time.local - updated_at) > recordExpires
   end
 
   def get(name, flag : RecordFlag)
-    return unless kind = collects[name]?
-    return unless _record = kind.record? flag
+    return unless entry = storage[name]?
+    return unless _record = entry.record? flag
 
-    kind.refresh ensure kind.tap
+    entry.refresh ensure entry.tap
     _record.packet
   end
 
   def set(name : String, packet : Packet, flag : RecordFlag)
     inactive_clean
 
-    insert name unless collects[name]?
-    return unless _collects = collects
-    return unless kind = _collects[name]?
+    insert name unless storage[name]?
+    return unless _storage = storage
+    return unless entry = _storage[name]?
 
-    set kind, packet, flag
-    @collects = _collects
+    set entry, packet, flag
+    @storage = _storage
   end
 
-  private def set(kind : Entry, packet : Packet, flag : RecordFlag)
-    return unless item = kind.force_fetch flag
+  private def set(entry : Entry, packet : Packet, flag : RecordFlag)
+    return unless item = entry.force_fetch flag
 
     item.packet = packet
     item.refresh
   end
 
   def size
-    collects.size
+    storage.size
   end
 
   def empty?
-    collects.empty?
+    storage.empty?
   end
 
   def inactive_clean
@@ -121,14 +121,14 @@ class Durian::Cache
       {% end %}
 
       _maximum = maximumCleanup - 1_i32
-      _collects = collects
+      _storage = storage
 
 
-      collects.each do |name, item|
+      storage.each do |name, entry|
       	{% if name.id == "access_at" %}
-          temporary << Tuple.new item.accessAt, name
+          temporary << Tuple.new entry.accessAt, name
       	{% elsif name.id == "tap" %}
-      	  temporary << Tuple.new item.tapCount, name
+      	  temporary << Tuple.new entry.tapCount, name
       	{% end %}
       end
 
@@ -138,10 +138,10 @@ class Durian::Cache
 
       _sort.each_with_index do |sort, index|
         break if index > _maximum
-       _collects = _collects.delete sort.last
+       _storage = _storage.delete sort.last
       end
 
-      @collects = _collects
+      @storage = _storage
       temporary.clear ensure _sort.clear
     end
     {% end %}
