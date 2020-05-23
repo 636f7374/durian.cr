@@ -7,13 +7,15 @@ class Durian::Resolver
 
   property dnsServers : Array(Tuple(Socket::IPAddress, Protocol))
   property random : Random
-  property tasks : Immutable::Map(String, Immutable::Map(String, ResolveTask))
+  property tasks : Hash(String, Hash(String, ResolveTask))
   property option : Option
+  property mutex : Mutex
 
   def initialize(@dnsServers : Array(Tuple(Socket::IPAddress, Protocol)))
     @random = Random.new
-    @tasks = Immutable::Map(String, Immutable::Map(String, ResolveTask)).new
+    @tasks = Hash(String, Hash(String, ResolveTask)).new
     @option = Option.new
+    @mutex = Mutex.new :unchecked
   end
 
   def self.new(dns_server : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32), protocol : Protocol = Protocol::UDP)
@@ -394,48 +396,54 @@ class Durian::Resolver
   end
 
   def resolve(host, flag : RecordFlag, strict_answer : Bool = false, &callback : ResolveResponse ->)
-    self.tasks = tasks.set host, Immutable::Map(String, ResolveTask).new unless tasks[host]?
+    @mutex.synchronize do
+      tasks[host] = Hash(String, ResolveTask).new unless tasks[host]?
 
-    loop do
-      _random = random.hex
-      next if item = tasks[host][_random]?
+      loop do
+        _random = random.hex
+        next if item = tasks[host][_random]?
 
-      update = tasks[host].set random.hex, Tuple.new [flag], strict_answer, callback
-      break self.tasks = tasks.set host, update
+        break tasks[host][random.hex] = Tuple.new [flag], strict_answer, callback
+      end
     end
   end
 
   def resolve(host, flags : Array(RecordFlag), strict_answer : Bool = false, &callback : ResolveResponse ->)
-    self.tasks = tasks.set host, Immutable::Map(String, ResolveTask).new unless tasks[host]?
+    @mutex.synchronize do
+      tasks[host] = Hash(String, ResolveTask).new unless tasks[host]?
 
-    loop do
-      _random = random.hex
-      next if item = tasks[host][_random]?
+      loop do
+        _random = random.hex
+        next if item = tasks[host][_random]?
 
-      update = tasks[host].set random.hex, Tuple.new flags, strict_answer, callback
-      break self.tasks = tasks.set host, update
+        break tasks[host][random.hex] = Tuple.new flags, strict_answer, callback
+      end
     end
   end
 
-  private def handle_task(host : String, task : Immutable::Map(String, ResolveTask))
+  private def handle_task(host : String, task : Hash(String, ResolveTask))
     channel = Channel(String).new
 
-    _mapping = mapping? host
+    _host = host.dup
+    _mapping = mapping? _host
     _to = mapping_to? _mapping if _mapping
-    host = _to.first if _to
+    _host = _to.first if _to
 
-    _specify = specify? host
+    _specify = specify? _host
     _through = _specify.through if _specify
 
     task.each do |id, item|
       spawn do
-        resolve_task _through, host, item
+        resolve_task _through, _host, item
       ensure
         channel.send id
       end
+    end
 
-      if receive_id = channel.receive
-        tasks[host]?.try { |_task| self.tasks = tasks.set host, _task.delete receive_id }
+    if task_id = channel.receive
+      @mutex.synchronize do
+        tasks[host]?.try { |_task| _task.delete task_id }
+        tasks.delete host if tasks[host].empty?
       end
     end
   end
