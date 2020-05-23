@@ -1,20 +1,17 @@
 class Durian::Cache
-  property storage : Immutable::Map(String, Entry)
+  property storage : Hash(String, Entry)
   property capacity : Int32
   property cleanInterval : Time::Span
   property recordExpires : Time::Span
   property cleanAt : Time
   property maximumCleanup : Int32
+  property mutex : Mutex
 
-  def initialize(@storage : Immutable::Map(String, Entry) = Immutable::Map(String, Entry).new, @capacity : Int32 = 256_i32,
+  def initialize(@storage : Hash(String, Entry) = Hash(String, Entry).new, @capacity : Int32 = 256_i32,
                  @cleanInterval : Time::Span = 3600_i32.seconds, @recordExpires : Time::Span = 1800_i32.seconds)
     @cleanAt = Time.local
     @maximumCleanup = (capacity / 2_i32).to_i32
-  end
-
-  def insert(name : String)
-    insert = storage.set name, Entry.new
-    @storage = insert
+    @mutex = Mutex.new :unchecked
   end
 
   def refresh
@@ -30,7 +27,7 @@ class Durian::Cache
   end
 
   def reset
-    @storage = storage.clear
+    self.storage.clear
   end
 
   def []=(name, value : Entry)
@@ -75,14 +72,14 @@ class Durian::Cache
   end
 
   def set(name : String, packet : Packet, flag : RecordFlag)
-    inactive_clean
+    @mutex.synchronize do
+      inactive_clean
 
-    insert name unless storage[name]?
-    return unless _storage = storage
-    return unless entry = _storage[name]?
+      self.storage[name] = Entry.new unless storage[name]?
+      return unless entry = storage[name]?
 
-    set entry, packet, flag
-    @storage = _storage
+      set entry, packet, flag
+    end
   end
 
   private def set(entry : Entry, packet : Packet, flag : RecordFlag)
@@ -121,8 +118,6 @@ class Durian::Cache
       {% end %}
 
       _maximum = maximumCleanup - 1_i32
-      _storage = storage
-
 
       storage.each do |name, entry|
       	{% if name.id == "access_at" %}
@@ -138,10 +133,9 @@ class Durian::Cache
 
       _sort.each_with_index do |sort, index|
         break if index > _maximum
-       _storage = _storage.delete sort.last
+        self.storage.delete sort.last
       end
 
-      @storage = _storage
       temporary.clear ensure _sort.clear
     end
     {% end %}
@@ -196,7 +190,7 @@ class Durian::Cache
           {% end %}
         else
         end
-        {% end %}
+      {% end %}
     end
 
     def create(flag : RecordFlag)
@@ -208,7 +202,7 @@ class Durian::Cache
           {% end %}
         else
         end
-        {% end %}
+      {% end %}
     end
 
     def update_at?(flag : RecordFlag)

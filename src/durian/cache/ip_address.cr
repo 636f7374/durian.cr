@@ -1,21 +1,18 @@
 class Durian::Cache
   class IPAddress
-    property storage : Immutable::Map(String, Entry)
+    property storage : Hash(String, Entry)
     property capacity : Int32
     property cleanInterval : Time::Span
     property recordExpires : Time::Span
     property cleanAt : Time
     property maximumCleanup : Int32
+    property mutex : Mutex
 
-    def initialize(@storage : Immutable::Map(String, Entry) = Immutable::Map(String, Entry).new, @capacity : Int32 = 256_i32,
+    def initialize(@storage : Hash(String, Entry) = Hash(String, Entry).new, @capacity : Int32 = 256_i32,
                    @cleanInterval : Time::Span = 3600_i32.seconds, @recordExpires : Time::Span = 1800_i32.seconds)
       @cleanAt = Time.local
       @maximumCleanup = (capacity / 2_i32).to_i32
-    end
-
-    def insert(name : String, ip_address : Array(Socket::IPAddress))
-      insert = storage.set name, Entry.new ip_address
-      @storage = insert
+      @mutex = Mutex.new :unchecked
     end
 
     def refresh
@@ -31,7 +28,7 @@ class Durian::Cache
     end
 
     def reset
-      @storage = storage.clear
+      self.storage.clear
     end
 
     def []=(name, value : Socket::IPAddress)
@@ -75,14 +72,14 @@ class Durian::Cache
       return unless entry = storage[name]?
 
       entry.refresh ensure entry.tap
-      address = [] of Socket::IPAddress
+      list = [] of Socket::IPAddress
 
       entry.ipAddress.each do |ip_address|
-        address << Socket::IPAddress.new ip_address.address, port
+        list << Socket::IPAddress.new ip_address.address, port
       end
 
-      return if address.empty?
-      address
+      return if list.empty?
+      list
     end
 
     def get(name : String) : Array(Socket::IPAddress)?
@@ -98,13 +95,21 @@ class Durian::Cache
 
     def set(name : String, ip_address : Array(Socket::IPAddress))
       return if ip_address.empty?
-      inactive_clean
 
-      insert name, ip_address unless entry = storage[name]?
-      return unless entry = storage[name]?
+      @mutex.synchronize do
+        inactive_clean
 
-      entry.ipAddress = ip_address
-      entry.refresh
+        unless storage[name]?
+          self.storage[name] = Entry.new ip_address
+
+          return
+        end
+
+        return unless entry = storage[name]?
+
+        entry.ipAddress = ip_address
+        entry.refresh
+      end
     end
 
     def size
@@ -135,9 +140,8 @@ class Durian::Cache
       {% end %}
 
       _maximum = maximumCleanup - 1_i32
-      _storage = storage
 
-      _storage.each do |name, entry|
+      storage.each do |name, entry|
       	{% if name.id == "access_at" %}
           temporary << Tuple.new entry.accessAt, name
       	{% elsif name.id == "tap" %}
@@ -151,10 +155,9 @@ class Durian::Cache
 
       _sort.each_with_index do |sort, index|
         break if index > _maximum
-        _storage = _storage.delete sort.last
+        self.storage.delete sort.last
       end
 
-      @storage = _storage
       temporary.clear ensure _sort.clear
     end
     {% end %}

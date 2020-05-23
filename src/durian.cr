@@ -2,7 +2,6 @@ require "socket"
 require "http/client"
 require "yaml"
 
-require "immutable"
 require "coffee"
 
 require "./durian/socket/*"
