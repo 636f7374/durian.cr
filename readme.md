@@ -50,21 +50,14 @@
 
 ## Tips
 
-* If you add multiple DNS servers
-  * if the connection fails or there is no response packet, he will try to use the next server.
+* If the connection fails or there is no response packet, it will try to use the next server.
 * `C.getaddrinfo` is incompatible with green threads, It may cause your program to [pause](#related).
   * `C.getaddrinfo` is too bad, you should not use it in green thread.
   * (libuv `uv_getaddrinfo`, libevent `evdns_getaddrinfo`) is too complicated, you may encounter many problems.
-* Why is it named `Durian.cr`? it's just random six-word English words.
 
 ## Next
 
 * [X] Support Alias & Mapping and Special DNS Server.
-  * Alias & Mapping: (`123.234.123.234`|`foo.com`) -> (`234.123.234.123`|`bar.com`).
-  * Special DNS Server: Specify different DNS servers for each different Domain Name.
-  * Special DNS Server: (`example.com` -> `8.8.8.8`, `google.com` -> `1.1.1.1`).
-  * <del>This feature will be implemented soon, So stay tuned.</del>
-  * `2020-03-16 10:26:24.875248000 UTC` Done.
 * [ ] Support response packet `to_io` operation.
 * [ ] More exception handling.
 * [ ] Support DNS server features.
