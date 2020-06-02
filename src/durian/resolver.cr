@@ -275,11 +275,11 @@ class Durian::Resolver
 
     # Switch to a custom DNS server
     _specify = resolver.specify? host, port
-    _through = _specify.through if _specify
+    _throughs = _specify.throughs if _specify
 
     list = [] of Socket::IPAddress
 
-    resolver.resolve_task _through, host, Tuple.new record_flags, true, ->(resolve_response : ResolveResponse) do
+    resolver.resolve_task _throughs, host, Tuple.new record_flags, true, ->(resolve_response : ResolveResponse) do
       extract_all_ip_address host, port, resolve_response, list
     end
 
@@ -430,11 +430,11 @@ class Durian::Resolver
     _host = _to.first if _to
 
     _specify = specify? _host
-    _through = _specify.through if _specify
+    _throughs = _specify.throughs if _specify
 
     task.each do |id, item|
       spawn do
-        resolve_task _through, _host, item
+        resolve_task _throughs, _host, item
       ensure
         channel.send id
       end
