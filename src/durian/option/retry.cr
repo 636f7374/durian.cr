@@ -9,8 +9,8 @@ class Durian::Option
 
     def initialize
       @mismatch = 5_i32
-      @maximumIpv4 = 2_i32
-      @maximumIpv6 = 2_i32
+      @maximumIpv4 = 5_i32
+      @maximumIpv6 = 5_i32
       @timeout = 1_i32
     end
   end
