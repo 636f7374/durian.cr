@@ -57,7 +57,7 @@ build() {
 }
 
 prepare_build() {
-  on_linux docker build -t crystal/stdlib-image .
+  on_linux docker build -t crystal/durian-image .
 
   on_osx brew update
   on_osx brew install crystal
@@ -72,7 +72,7 @@ with_build_env() {
   on_linux docker run \
     -v $PWD:/mnt \
     -w /mnt \
-    crystal/stdlib-image /bin/sh -c "'$command'"
+    crystal/durian-image /bin/sh -c "'$command'"
 
 
   on_osx /bin/sh -c "'$command'"
