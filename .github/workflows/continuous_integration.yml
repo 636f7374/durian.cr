@@ -1,0 +1,47 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: 
+    - master
+
+  pull_request:
+    branches: 
+    - master
+
+jobs:
+  linux:
+    name: Continuous Integration - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: 
+        - ubuntu-latest
+    container:
+      image: crystallang/crystal
+    steps:
+    - name: Actions - Use CheckOut@V2
+      uses: actions/checkout@v2
+    - name: Install - Durian Dependencies
+      run: shards install
+    - name: Test - Crystal Spec
+      run: crystal spec --error-trace --stats --progress --no-debug
+
+  macOS:
+    name: Continuous Integration - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: 
+        - macOS-latest
+    steps:
+    - name: Actions - Use CheckOut@V2
+      uses: actions/checkout@v2
+    - name: Install - Brew Package Management
+      run: brew update
+    - name: Install - Crystal Language
+      run: brew install crystal
+    - name: Install - Durian Dependencies
+      run: shards install
+    - name: Test - Crystal Spec
+      run: crystal spec --error-trace --stats --progress --no-debug
