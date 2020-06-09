@@ -22,10 +22,8 @@ class Durian::Record
     temporary.rewind
     return String.new if temporary.size != length
 
-    decode = Durian.decode_{{name.id}}_ipv4_address temporary, length
-    temporary.close
-
-    decode
+    ip_address = Socket::IPAddress.ipv4_from_io io: temporary, addrlen: length rescue nil
+    ip_address.try &.address || String.new
   end
   {% end %}
   end

@@ -156,69 +156,6 @@ module Durian
     io.write_byte 0_u8
   end
 
-  {% for name in ["authority", "answer", "additional"] %}
-  def self.decode_{{name.id}}_ipv4_address(io : IO, length : Int)
-    return String.new if length != 4_i32
-    buffer = limit_length_buffer io, length
-    ipv4_address = [] of String
-
-    loop do
-      part = buffer.read_byte rescue nil
-      break buffer.close unless part
-      ipv4_address << part.to_s << "."
-    end
-
-    ipv4_address.pop if "." == ipv4_address.last
-
-    buffer.close
-    ipv4_address.join
-  end
-
-  def self.decode_{{name.id}}_ipv6_address(io : IO, length : Int)
-    return String.new if length != 16_i32
-    buffer = limit_length_buffer io, length
-    ipv6_address = [] of String
-
-    loop do
-      first_byte = buffer.read_byte rescue nil
-      _last_byte = buffer.read_byte rescue nil
-
-      break unless first_byte
-      break unless _last_byte
-
-      first_hex = ("%02x" % first_byte).split String.new
-      _last_hex = ("%02x" % _last_byte).split String.new
-
-      case {first_hex.first, first_hex.last, _last_hex.first, _last_hex.last}
-      when {"0", "0", "0", "0"}
-        next if ipv6_address.empty?
-
-        colon = ":" == ipv6_address.last && ":" == ipv6_address[-2_i32]?
-        ipv6_address << ":" unless colon
-      when {"0", "0", "0", _last_hex.last}
-        ipv6_address << _last_hex.last << ":"
-      when {"0", "0", _last_hex.first, _last_hex.last}
-        ipv6_address << _last_hex.first
-        ipv6_address << _last_hex.last << ":"
-      when {"0", first_hex.last, _last_hex.first, _last_hex.last}
-        ipv6_address << first_hex.last << _last_hex.first
-        ipv6_address << _last_hex.last << ":"
-      else
-        ipv6_address << first_hex.first << first_hex.last
-        ipv6_address << _last_hex.first << _last_hex.last << ":"
-      end
-    end
-
-    return "::" if ipv6_address.empty?
-    ipv6_address.pop if "::" == ipv6_address.last || ":" == ipv6_address.last
-
-    address = ipv6_address.join
-    return String.build { |io| io << "::" << address } if address.to_i?
-
-    address
-  end
-  {% end %}
-
   def self.decode_address_by_pointer(buffer : IO, offset : Int, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32, maximum_recursive : Int32 = 64_i32)
     return String.new if offset.zero?
     return String.new if offset > buffer.size
