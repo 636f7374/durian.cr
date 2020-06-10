@@ -114,7 +114,7 @@ class Durian::Cache
       {% if name.id == "access_at" %}
       	temporary = [] of Tuple(Time, String)
       {% elsif name.id == "tap" %}
-      	temporary = [] of Tuple(Int32, String)
+      	temporary = [] of Tuple(Int64, String)
       {% end %}
 
       _maximum = maximumCleanup - 1_i32
@@ -123,7 +123,7 @@ class Durian::Cache
       	{% if name.id == "access_at" %}
           temporary << Tuple.new entry.accessAt, name
       	{% elsif name.id == "tap" %}
-      	  temporary << Tuple.new entry.tapCount, name
+      	  temporary << Tuple.new entry.tapCount.get, name
       	{% end %}
       end
 
@@ -142,7 +142,7 @@ class Durian::Cache
 
   class Entry
     property accessAt : Time
-    property tapCount : Int32
+    property tapCount : Atomic(Int64)
     property a : Entry?
     property aaaa : Entry?
     property ns : Entry?
@@ -154,7 +154,7 @@ class Durian::Cache
     property dname : Entry?
     property srv : Entry?
 
-    def initialize(@accessAt : Time = Time.local, @tapCount : Int32 = 0_i32)
+    def initialize(@accessAt : Time = Time.local, @tapCount : Atomic(Int64) = Atomic(Int64).new 0_i64)
       @a = nil
       @aaaa = nil
       @ns = nil
@@ -168,7 +168,7 @@ class Durian::Cache
     end
 
     def tap
-      @tapCount = tapCount + 1_i32
+      tapCount.add 1_i64
     end
 
     def refresh
