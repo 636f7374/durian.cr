@@ -5,7 +5,6 @@ servers << Tuple.new Socket::IPAddress.new("8.8.8.8", 53_i32), Durian::Protocol:
 servers << Tuple.new Socket::IPAddress.new("1.1.1.1", 53_i32), Durian::Protocol::UDP
 
 buffer = uninitialized UInt8[4096_i32]
-
 resolver = Durian::Resolver.new servers
 resolver.ip_cache = Durian::Cache::IPAddress.new
 
@@ -29,4 +28,4 @@ rescue
   abort "Read Failed"
 end
 
-puts [length, String.new buffer.to_slice[0_i32, length]]
+STDOUT.puts [length, String.new buffer.to_slice[0_i32, length]]

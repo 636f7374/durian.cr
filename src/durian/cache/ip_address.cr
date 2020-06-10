@@ -128,6 +128,7 @@ class Durian::Cache
       when {true, true}
         clean_by_access_at
         refresh
+      else
       end
     end
 

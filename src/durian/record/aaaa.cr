@@ -1,8 +1,8 @@
 class Durian::Record
   class AAAA < Durian::Record
-    property ipv6Address : String
+    property ipv6Address : Socket::IPAddress?
 
-    def initialize(@ipv6Address : String = String.new, @cls : Cls = Cls::Internet, @ttl : UInt32 = 0_u32, @from : String? = nil)
+    def initialize(@ipv6Address : Socket::IPAddress? = nil, @cls : Cls = Cls::Internet, @ttl : UInt32 = 0_u32, @from : String? = nil)
       @flag = RecordFlag::AAAA
     end
 
@@ -15,15 +15,14 @@ class Durian::Record
   end
 
   def self.decode_{{name.id}}_ipv6_address(io : IO,  buffer : IO, length : Int)
-    return String.new if length != 16_i32
+    return if length != 16_i32
 
     temporary = Durian.limit_length_buffer io, length
     IO.copy temporary, buffer rescue nil
     temporary.rewind
-    return String.new if temporary.size != length
+    return if temporary.size != length
 
-    ip_address = Socket::IPAddress.ipv6_from_io io: temporary, addrlen: length rescue nil
-    ip_address.try &.address || String.new
+    Socket::IPAddress.ipv6_from_io io: temporary, addrlen: length rescue nil
   end
   {% end %}
   end

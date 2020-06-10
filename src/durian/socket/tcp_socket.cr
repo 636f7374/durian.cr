@@ -36,6 +36,7 @@ class Durian::TCPSocket < TCPSocket
       when .inet?
         next if retry_ipv4 == maximum_retry_ipv4
         retry_ipv4 += 1_i32
+      else
       end
 
       socket = ::TCPSocket.new address, timeout, timeout rescue nil

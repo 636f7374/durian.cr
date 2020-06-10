@@ -129,30 +129,29 @@ class Durian::Resolver
         case _record
         when Record::AAAA
           return unless _record.responds_to? :ipv6Address
+          return unless ipv6_address = _record.ipv6Address
+          ipv6_address = Socket::IPAddress.new ipv6_address.address, port
 
-          _ip_address = Socket::IPAddress.new _record.ipv6Address, port rescue nil
-          next unless _ip_address
-          next list << _ip_address if host == from
+          next list << ipv6_address if host == from
           alias_server[from] = Array(Socket::IPAddress).new unless alias_server[from]?
 
-          if alias_list = alias_server[from]?
-            alias_list << _ip_address if alias_list.is_a? Array(Socket::IPAddress)
-          end
+          next unless alias_list = alias_server[from]?
+          alias_list << ipv6_address if alias_list.is_a? Array(Socket::IPAddress)
         when Record::A
           return unless _record.responds_to? :ipv4Address
+          return unless ipv4_address = _record.ipv4Address
+          ipv4_address = Socket::IPAddress.new ipv4_address.address, port
 
-          _ip_address = Socket::IPAddress.new _record.ipv4Address, port rescue nil
-          next unless _ip_address
-          next list << _ip_address if host == from
+          next list << ipv4_address if host == from
           alias_server[from] = Array(Socket::IPAddress).new unless alias_server[from]?
 
-          if alias_list = alias_server[from]?
-            alias_list << _ip_address if alias_list.is_a? Array(Socket::IPAddress)
-          end
+          next unless alias_list = alias_server[from]?
+          alias_list << ipv4_address if alias_list.is_a? Array(Socket::IPAddress)
         when Record::CNAME
           return unless _record.responds_to? :canonicalName
 
           alias_server[from] = _record.canonicalName
+        else
         end
       end
 

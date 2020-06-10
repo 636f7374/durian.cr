@@ -99,7 +99,7 @@ rescue
   abort "Read Failed"
 end
 
-puts [length, String.new buffer.to_slice[0_i32, length]]
+STDOUT.puts [length, String.new buffer.to_slice[0_i32, length]]
 ```
 
 * Client | Query - A similar [React](https://reactphp.org/dns/) Proc usage.
@@ -115,19 +115,19 @@ resolver = Durian::Resolver.new servers
 resolver.cache = Durian::Cache.new
 
 resolver.resolve "google.com", [Durian::RecordFlag::A, Durian::RecordFlag::AAAA] do |response|
-  puts [:Google, Time.utc, response]
+  STDOUT.puts [:Google, Time.utc, response]
 end
 
 resolver.resolve "twitter.com", Durian::RecordFlag::SOA do |response|
-  puts [:Twitter, Time.utc, response]
+  STDOUT.puts [:Twitter, Time.utc, response]
 end
 
 resolver.resolve "facebook.com", [Durian::RecordFlag::A, Durian::RecordFlag::AAAA] do |response|
-  puts [:FaceBook, Time.utc, response]
+  STDOUT.puts [:FaceBook, Time.utc, response]
 end
 
 resolver.resolve "twitter.com", Durian::RecordFlag::SOA do |response|
-  puts [:Twitter, Time.utc, response]
+  STDOUT.puts [:Twitter, Time.utc, response]
 end
 
 resolver.run
@@ -140,11 +140,11 @@ require "durian"
 
 buffer = uninitialized UInt8[4096_i32]
 
-request = Durian::Packet::Request.new
+request = Durian::Packet.new Durian::Protocol::UDP, Durian::Packet::QRFlag::Query
 request.add_query "www.example.com", Durian::RecordFlag::A
 
 _request = IO::Memory.new request.to_slice
-puts [:Request, Durian::Packet::Request.from_io _request]
+STDOUT.puts [:Request, Durian::Packet.from_io Durian::Protocol::UDP, Durian::Packet::QRFlag::Query, _request]
 
 udp_socket = UDPSocket.new
 udp_socket.connect Socket::IPAddress.new "8.8.8.8", 53_i32
@@ -152,7 +152,7 @@ udp_socket.send _request.to_slice
 length, ip_address = udp_socket.receive buffer.to_slice
 
 _response = IO::Memory.new buffer.to_slice[0_i32, length]
-puts [:Response, Durian::Packet::Response.from_io _response]
+STDOUT.puts [:Response, Durian::Packet.from_io Durian::Protocol::UDP, Durian::Packet::QRFlag::Response, _response]
 ```
 
 ### Used as Shard
