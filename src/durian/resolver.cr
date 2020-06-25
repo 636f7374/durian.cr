@@ -6,13 +6,11 @@ class Durian::Resolver
   alias AliasServer = Hash(String, String | Array(Socket::IPAddress))
 
   property dnsServers : Array(Tuple(Socket::IPAddress, Protocol))
-  property random : Random
   property tasks : Hash(String, Hash(String, ResolveTask))
   property option : Option
   property mutex : Mutex
 
   def initialize(@dnsServers : Array(Tuple(Socket::IPAddress, Protocol)))
-    @random = Random.new
     @tasks = Hash(String, Hash(String, ResolveTask)).new
     @option = Option.new
     @mutex = Mutex.new :unchecked
@@ -399,10 +397,10 @@ class Durian::Resolver
       tasks[host] = Hash(String, ResolveTask).new unless tasks[host]?
 
       loop do
-        _random = random.hex
+        _random = Random.new.hex
         next if item = tasks[host][_random]?
 
-        break tasks[host][random.hex] = Tuple.new [flag], strict_answer, callback
+        break tasks[host][_random] = Tuple.new [flag], strict_answer, callback
       end
     end
   end
@@ -412,10 +410,10 @@ class Durian::Resolver
       tasks[host] = Hash(String, ResolveTask).new unless tasks[host]?
 
       loop do
-        _random = random.hex
+        _random = Random.new.hex
         next if item = tasks[host][_random]?
 
-        break tasks[host][random.hex] = Tuple.new flags, strict_answer, callback
+        break tasks[host][_random] = Tuple.new flags, strict_answer, callback
       end
     end
   end
