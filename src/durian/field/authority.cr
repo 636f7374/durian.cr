@@ -3,7 +3,7 @@ module Durian::Field
     property resourceRecord : Record
 
     def initialize(flag : RecordFlag = RecordFlag::ANY)
-      @resourceRecord = Field.new_resource_record flag
+      @resourceRecord = Record.new flag
     end
 
     def from
@@ -23,7 +23,7 @@ module Durian::Field
     end
 
     def self.decode(io : IO, buffer : IO)
-      from = Field.decode_resource_pointer io, buffer
+      from = Durian.decode_resource_pointer io, buffer
       flag = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       _cls = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       _ttl = io.read_bytes UInt32, IO::ByteFormat::BigEndian
@@ -37,7 +37,7 @@ module Durian::Field
       buffer.write_bytes _cls, IO::ByteFormat::BigEndian
       buffer.write_bytes _ttl, IO::ByteFormat::BigEndian
 
-      Field.decode_record_authority authority.resourceRecord, io, buffer
+      Record.decode_authority authority.resourceRecord, io, buffer
 
       authority
     end

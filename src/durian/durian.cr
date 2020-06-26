@@ -124,21 +124,31 @@ module Durian
   class BadPacket < Exception
   end
 
-  def limit_length_buffer(io : IO) : IO::Memory
-    chunk_length = uninitialized UInt8[1_i32]
-    length = io.read chunk_length.to_slice
-    return IO::Memory.new 0_i32 if 1_i32 != length
+  def self.decode_resource_pointer(io : IO, buffer : IO)
+    pointer = uninitialized UInt8[2_i32]
+    pointer_flag = io.read pointer.to_slice
 
-    limit_length_buffer io, chunk_length.first
+    if 2_i32 != pointer_flag
+      raise MalformedPacket.new "Expecting two bytes"
+    end
+
+    slice = pointer.to_slice
+
+    if slice[0_i32] != 0b11000000
+      raise MalformedPacket.new "Invalid pointer"
+    end
+
+    buffer.write slice
+    decode_address_by_pointer buffer, slice[1_i32]
   end
 
-  def self.limit_length_buffer(io : IO, length : Int)
+  def self.limit_length_buffer(io : IO, length : Int) : IO::Memory
     limit_length_buffer! io, length rescue IO::Memory.new 0_i32
   end
 
-  def self.limit_length_buffer!(io : IO, length : Int)
+  def self.limit_length_buffer!(io : IO, length : Int) : IO::Memory
     temporary = IO::Memory.new
-    IO.copy io, temporary, length rescue nil
+    IO.copy io, temporary, length
 
     temporary.rewind
     temporary

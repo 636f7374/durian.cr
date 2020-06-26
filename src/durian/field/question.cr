@@ -13,7 +13,6 @@ module Durian::Field
 
     def encode(flag : RecordFlag, io : IO)
       return unless _query = query
-
       Durian.encode_chunk_ipv4_address _query, io
 
       io.write_bytes flag.to_u16, IO::ByteFormat::BigEndian

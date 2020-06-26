@@ -99,6 +99,14 @@ class Durian::Packet
     @buffer = nil
   end
 
+  def bad_decode=(value : Bool)
+    @badDecode = value
+  end
+
+  def bad_decode
+    @badDecode
+  end
+
   def add_query(query : String, flag : RecordFlag)
     {% begin %}
       case flag
@@ -166,7 +174,6 @@ class Durian::Packet
 
   def self.from_io!(protocol : Protocol, io : IO, buffer : IO::Memory = IO::Memory.new) : Packet
     packet = new protocol: protocol
-    bad_decode = false
 
     begin
       length = io.read_bytes UInt16, IO::ByteFormat::BigEndian if protocol.tcp?
@@ -182,27 +189,27 @@ class Durian::Packet
     parse_flags_count! packet, io, buffer
 
     packet.questionCount.times do
-      break if bad_decode
+      break if packet.bad_decode
 
-      packet.queries << Field::Question.decode io, buffer rescue bad_decode = true
+      packet.queries << Field::Question.decode io, buffer rescue packet.bad_decode = true
     end
 
     packet.answerCount.times do
-      break if bad_decode
+      break if packet.bad_decode
 
-      packet.answers << Field::Answer.decode io, buffer rescue bad_decode = true
+      packet.answers << Field::Answer.decode io, buffer rescue packet.bad_decode = true
     end
 
     packet.authorityCount.times do
-      break if bad_decode
+      break if packet.bad_decode
 
-      packet.authority << Field::Authority.decode io, buffer rescue bad_decode = true
+      packet.authority << Field::Authority.decode io, buffer rescue packet.bad_decode = true
     end
 
     packet.additionalCount.times do
-      break if bad_decode
+      break if packet.bad_decode
 
-      packet.additional << Field::Additional.decode io, buffer rescue bad_decode = true
+      packet.additional << Field::Additional.decode io, buffer rescue packet.bad_decode = true
     end
 
     packet.buffer = buffer
