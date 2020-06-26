@@ -1,4 +1,4 @@
-module Durian::Section
+module Durian::Field
   class Question
     property flag : RecordFlag
     property query : String

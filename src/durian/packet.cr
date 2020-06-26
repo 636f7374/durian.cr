@@ -59,10 +59,10 @@ class Durian::Packet
 
   property protocol : Protocol
   property qrFlag : QRFlag
-  property queries : Array(Section::Question)
-  property answers : Array(Section::Answer)
-  property authority : Array(Section::Authority)
-  property additional : Array(Section::Additional)
+  property queries : Array(Field::Question)
+  property answers : Array(Field::Answer)
+  property authority : Array(Field::Authority)
+  property additional : Array(Field::Additional)
   property transId : UInt16
   property operationCode : OperationCode
   property error : Error
@@ -79,10 +79,10 @@ class Durian::Packet
   property buffer : IO::Memory?
 
   def initialize(@protocol : Protocol = Protocol::UDP, @qrFlag : QRFlag = QRFlag::Query)
-    @queries = [] of Section::Question
-    @answers = [] of Section::Answer
-    @authority = [] of Section::Authority
-    @additional = [] of Section::Additional
+    @queries = [] of Field::Question
+    @answers = [] of Field::Answer
+    @authority = [] of Field::Authority
+    @additional = [] of Field::Additional
     @transId = Random.new.rand UInt16
     @operationCode = OperationCode::StandardQuery
     @error = Error::NoError
@@ -104,7 +104,7 @@ class Durian::Packet
       case flag
         {% for name in AvailableRecordFlag %}
       when RecordFlag::{{name.upcase.id}}
-        queries << Section::Question.new RecordFlag::{{name.upcase.id}}, query
+        queries << Field::Question.new RecordFlag::{{name.upcase.id}}, query
         {% end %}
       else
       end
@@ -184,25 +184,25 @@ class Durian::Packet
     packet.questionCount.times do
       break if bad_decode
 
-      packet.queries << Section::Question.decode io, buffer rescue bad_decode = true
+      packet.queries << Field::Question.decode io, buffer rescue bad_decode = true
     end
 
     packet.answerCount.times do
       break if bad_decode
 
-      packet.answers << Section::Answer.decode io, buffer rescue bad_decode = true
+      packet.answers << Field::Answer.decode io, buffer rescue bad_decode = true
     end
 
     packet.authorityCount.times do
       break if bad_decode
 
-      packet.authority << Section::Authority.decode io, buffer rescue bad_decode = true
+      packet.authority << Field::Authority.decode io, buffer rescue bad_decode = true
     end
 
     packet.additionalCount.times do
       break if bad_decode
 
-      packet.additional << Section::Additional.decode io, buffer rescue bad_decode = true
+      packet.additional << Field::Additional.decode io, buffer rescue bad_decode = true
     end
 
     packet.buffer = buffer
@@ -305,7 +305,7 @@ class Durian::Packet
     io.write_bytes flags, IO::ByteFormat::BigEndian
 
     # * ... count fields give the number of entry in each following sections:
-    #   * Question Count (2 Bytes)
+    #   * Question count (2 Bytes)
 
     io.write_bytes queries.size.to_u16, IO::ByteFormat::BigEndian
 

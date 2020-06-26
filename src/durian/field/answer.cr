@@ -1,9 +1,9 @@
-module Durian::Section
-  class Additional
+module Durian::Field
+  class Answer
     property resourceRecord : Record
 
     def initialize(flag : RecordFlag = RecordFlag::ANY)
-      @resourceRecord = Section.new_resource_record flag
+      @resourceRecord = Field.new_resource_record flag
     end
 
     def from
@@ -23,23 +23,23 @@ module Durian::Section
     end
 
     def self.decode(io : IO, buffer : IO)
-      from = Section.decode_resource_pointer io, buffer
+      from = Field.decode_resource_pointer io, buffer
       flag = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       _cls = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       _ttl = io.read_bytes UInt32, IO::ByteFormat::BigEndian
 
-      additional = new RecordFlag.new flag
-      additional.resourceRecord.from = from
-      additional.resourceRecord.cls = Cls.new _cls
-      additional.resourceRecord.ttl = _ttl
+      answer = new RecordFlag.new flag
+      answer.resourceRecord.from = from
+      answer.resourceRecord.cls = Cls.new _cls
+      answer.resourceRecord.ttl = _ttl
 
       buffer.write_bytes flag, IO::ByteFormat::BigEndian
       buffer.write_bytes _cls, IO::ByteFormat::BigEndian
       buffer.write_bytes _ttl, IO::ByteFormat::BigEndian
 
-      Section.decode_record_additional additional.resourceRecord, io, buffer
+      Field.decode_record_answer answer.resourceRecord, io, buffer
 
-      additional
+      answer
     end
   end
 end

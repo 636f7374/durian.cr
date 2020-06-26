@@ -4,7 +4,7 @@ require "../src/durian.cr"
 
 buffer = uninitialized UInt8[4096_i32]
 request = Durian::Packet.new Durian::Protocol::UDP, Durian::Packet::QRFlag::Query
-request.queries << Durian::Section::Question.new Durian::RecordFlag::TXT, "version.bind", Durian::Cls::Chaos
+request.queries << Durian::Field::Question.new Durian::RecordFlag::TXT, "version.bind", Durian::Cls::Chaos
 
 _request = IO::Memory.new request.to_slice
 STDOUT.puts [:Request, Durian::Packet.from_io Durian::Packet::QRFlag::Query, _request]

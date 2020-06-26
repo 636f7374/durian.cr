@@ -1,9 +1,9 @@
-module Durian::Section
+module Durian::Field
   class Authority
     property resourceRecord : Record
 
     def initialize(flag : RecordFlag = RecordFlag::ANY)
-      @resourceRecord = Section.new_resource_record flag
+      @resourceRecord = Field.new_resource_record flag
     end
 
     def from
@@ -23,7 +23,7 @@ module Durian::Section
     end
 
     def self.decode(io : IO, buffer : IO)
-      from = Section.decode_resource_pointer io, buffer
+      from = Field.decode_resource_pointer io, buffer
       flag = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       _cls = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       _ttl = io.read_bytes UInt32, IO::ByteFormat::BigEndian
@@ -37,7 +37,7 @@ module Durian::Section
       buffer.write_bytes _cls, IO::ByteFormat::BigEndian
       buffer.write_bytes _ttl, IO::ByteFormat::BigEndian
 
-      Section.decode_record_authority authority.resourceRecord, io, buffer
+      Field.decode_record_authority authority.resourceRecord, io, buffer
 
       authority
     end

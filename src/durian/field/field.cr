@@ -1,4 +1,4 @@
-module Durian::Section
+module Durian::Field
   {% for name in ["answer", "authority", "additional"] %}
   def self.decode_record_{{name.id}}(resource_record : Record, io : IO, buffer : IO)
     {% begin %}

@@ -15,12 +15,14 @@ module Durian
 
   enum RecordFlag : UInt16
     # Pseudo Record Types
+
     ANY  = 255_u16
     AXFR = 252_u16
     IXFR = 251_u16
     OPT  =  41_u16
 
     # Active Record Types
+
     A          =     1_u16
     AAAA       =    28_u16
     AFSDB      =    18_u16
@@ -61,6 +63,7 @@ module Durian
     URI        =   256_u16
 
     # Obsolete Record Types
+
     MD       =   3_u16
     MF       =   4_u16
     MAILA    = 254_u16
@@ -115,7 +118,7 @@ module Durian
   class UnknownFlag < Exception
   end
 
-  class UnknownSection < Exception
+  class UnknownField < Exception
   end
 
   class BadPacket < Exception
