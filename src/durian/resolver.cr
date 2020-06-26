@@ -91,13 +91,16 @@ class Durian::Resolver
       break if length.zero? && protocol.tcp?
 
       io = IO::Memory.new buffer.to_slice[0_i32, length]
-      response = Packet.from_io protocol: protocol, qr_flag: Packet::QRFlag::Response, io: io
+      response = Packet.from_io protocol: protocol, io: io
 
       unless response
         next if protocol.udp?
 
         break
       end
+
+      break unless qr_flag = response.qrFlag
+      break unless qr_flag.response?
 
       break response if request.transId == response.transId
     end

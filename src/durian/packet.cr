@@ -160,12 +160,12 @@ class Durian::Packet
     buffer.write_bytes packet.additionalCount, IO::ByteFormat::BigEndian
   end
 
-  def self.from_io(protocol : Protocol, qr_flag : QRFlag, io : IO, buffer : IO::Memory = IO::Memory.new) : Packet?
-    from_io! protocol, qr_flag, io, buffer rescue nil
+  def self.from_io(protocol : Protocol, io : IO, buffer : IO::Memory = IO::Memory.new) : Packet?
+    from_io! protocol, io, buffer rescue nil
   end
 
-  def self.from_io!(protocol : Protocol, qr_flag : QRFlag, io : IO, buffer : IO::Memory = IO::Memory.new) : Packet
-    packet = new protocol: protocol, qrFlag: qr_flag
+  def self.from_io!(protocol : Protocol, io : IO, buffer : IO::Memory = IO::Memory.new) : Packet
+    packet = new protocol: protocol
     bad_decode = false
 
     begin
@@ -306,18 +306,23 @@ class Durian::Packet
 
     # * ... count fields give the number of entry in each following sections:
     #   * Question Count (2 Bytes)
+
     io.write_bytes queries.size.to_u16, IO::ByteFormat::BigEndian
 
     #   * Answer count (2 Bytes)
+
     io.write_bytes 0_u16, IO::ByteFormat::BigEndian
 
     #   * Authority count (2 Bytes)
+
     io.write_bytes 0_u16, IO::ByteFormat::BigEndian
 
     #   * Additional count (2 Bytes)
+
     io.write_bytes 0_u16, IO::ByteFormat::BigEndian
 
     # * Question count equals to 1 in general, but could be 0 or > 1 in very special cases
+
     queries.each &.encode io
   end
 
