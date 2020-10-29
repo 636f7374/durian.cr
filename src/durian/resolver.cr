@@ -48,23 +48,78 @@ class Durian::Resolver
                        flag : RecordFlag, strict_answer : Bool = false) : Packet?
     servers = specify || dnsServers
 
+    task_mutex = Mutex.new :unchecked
+    response_packets_list = [] of Packet?
+
     servers.each do |server|
-      socket = Network.create server, option.timeout rescue nil
-      next unless socket
+      spawn do
+        socket = Network.create server, option.timeout rescue nil
+        next response_packets_list << nil unless socket
 
-      packet = resolve_by_flag! socket, host, flag rescue nil
-      next socket.close unless packet
-      next socket.close if packet.answerCount.zero? || packet.answers.empty?
+        packet = resolve_by_flag! socket, host, flag rescue nil
 
-      if strict_answer
-        include_flag = false
+        unless packet
+          socket.close
+          next response_packets_list << nil
+        end
 
-        packet.answers.each { |answer| break include_flag = true if answer.flag == flag }
-        next socket.close unless include_flag
+        if packet.answerCount.zero? || packet.answers.empty?
+          socket.close
+          next response_packets_list << nil
+        end
+
+        if strict_answer
+          include_flag = false
+
+          packet.answers.each { |answer| break include_flag = true if answer.flag == flag }
+
+          unless include_flag
+            socket.close
+            next response_packets_list << nil
+          end
+        end
+
+        socket.close
+        next task_mutex.synchronize { response_packets_list << packet }
+      end
+    end
+
+    loop do
+      next sleep 0.05_f32.seconds if response_packets_list.size != servers.size
+      return merge_packets response_packets_list
+    end
+  end
+
+  def merge_packets(packets : Array(Packet?)) : Packet?
+    packets.each do |packet|
+      next unless _packet = packet
+
+      merged = Packet.new _packet.protocol, _packet.qrFlag
+      merged.queries = _packet.queries
+
+      packets.map do |__packet|
+        next unless ___packet = __packet
+
+        ___packet.answers.each { |answers| merged.answers << answers }
+        ___packet.authority.each { |authority| merged.authority << authority }
+        ___packet.additional.each { |additional| merged.additional << additional }
       end
 
-      socket.close
-      break packet
+      merged.transId = _packet.transId
+      merged.operationCode = _packet.operationCode
+      merged.error = _packet.error
+      merged.authoritativeAnswer = _packet.authoritativeAnswer
+      merged.truncated = _packet.truncated
+      merged.recursionDesired = _packet.recursionDesired
+      merged.recursionAvailable = _packet.recursionAvailable
+      merged.authenticatedData = _packet.authenticatedData
+      merged.checkingDisabled = _packet.checkingDisabled
+      merged.questionCount = merged.queries.size.to_u16
+      merged.answerCount = merged.answers.size.to_u16
+      merged.authorityCount = merged.authority.size.to_u16
+      merged.additionalCount = merged.additional.size.to_u16
+
+      return merged
     end
   end
 
