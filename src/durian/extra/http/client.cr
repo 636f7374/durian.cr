@@ -23,7 +23,7 @@ class HTTP::Client
   private def create_socket(hostname : String)
     return TCPSocket.new hostname, @port, @dns_timeout, @connect_timeout unless resolver = dns_resolver
 
-    TCPSocket.connect hostname, @port, resolver, @connect_timeout
+    Durian::TCPSocket.connect hostname, @port, resolver, @connect_timeout
   end
 
   def tcp_socket=(value : TCPSocket)
