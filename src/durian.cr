@@ -2,7 +2,7 @@ require "socket"
 require "http/client"
 require "yaml"
 
-require "../lib/coffee/src/coffee.cr"
+require "coffee"
 
 require "./durian/socket/*"
 require "./durian/extra/*"
