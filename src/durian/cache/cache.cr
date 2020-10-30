@@ -63,29 +63,29 @@ class Durian::Cache
     (Time.local - updated_at) > recordExpires
   end
 
-  def get(name, flag : RecordFlag)
+  def get(name, flag : RecordFlag) : Array(Packet)?
     return unless entry = storage[name]?
     return unless _record = entry.record? flag
 
     entry.refresh ensure entry.tap
-    _record.packet
+    _record.packets
   end
 
-  def set(name : String, packet : Packet, flag : RecordFlag)
+  def set(name : String, packets : Array(Packet), flag : RecordFlag)
     @mutex.synchronize do
       inactive_clean
 
       self.storage[name] = Entry.new unless storage[name]?
       return unless entry = storage[name]?
 
-      set entry, packet, flag
+      set entry, packets, flag
     end
   end
 
-  private def set(entry : Entry, packet : Packet, flag : RecordFlag)
+  private def set(entry : Entry, packets : Array(Packet), flag : RecordFlag)
     return unless item = entry.force_fetch flag
 
-    item.packet = packet
+    item.packets = packets
     item.refresh
   end
 
@@ -112,19 +112,19 @@ class Durian::Cache
   {% for name in ["tap", "access_at"] %}
     private def clean_by_{{name.id}}
       {% if name.id == "access_at" %}
-      	temporary = [] of Tuple(Time, String)
+        temporary = [] of Tuple(Time, String)
       {% elsif name.id == "tap" %}
-      	temporary = [] of Tuple(Int64, String)
+        temporary = [] of Tuple(Int64, String)
       {% end %}
 
       _maximum = maximumCleanup - 1_i32
 
       storage.each do |name, entry|
-      	{% if name.id == "access_at" %}
+        {% if name.id == "access_at" %}
           temporary << Tuple.new entry.accessAt, name
-      	{% elsif name.id == "tap" %}
-      	  temporary << Tuple.new entry.tapCount.get, name
-      	{% end %}
+        {% elsif name.id == "tap" %}
+          temporary << Tuple.new entry.tapCount.get, name
+        {% end %}
       end
 
       _sort = temporary.sort do |x, y|
@@ -177,7 +177,7 @@ class Durian::Cache
 
     {% for name in AvailableRecordFlag %}
       def create_{{name.downcase.id}}
-      	self.{{name.downcase.id}} = Entry.new
+        self.{{name.downcase.id}} = Entry.new
       end
       {% end %}
 
@@ -186,7 +186,7 @@ class Durian::Cache
         case flag
           {% for name in AvailableRecordFlag %}
         when .{{name.downcase.id}}?
-          {{name.downcase.id}}	
+          {{name.downcase.id}}  
           {% end %}
         else
         end
@@ -198,7 +198,7 @@ class Durian::Cache
         case flag
           {% for name in AvailableRecordFlag %}
         when .{{name.downcase.id}}?
-          create_{{name.downcase.id}}	
+          create_{{name.downcase.id}} 
           {% end %}
         else
         end
@@ -218,10 +218,14 @@ class Durian::Cache
     end
 
     class Entry
-      property packet : Packet?
+      property packets : Array(Packet)?
       property updateAt : Time
 
-      def initialize(@packet : Packet? = nil, @updateAt : Time = Time.local)
+      def initialize(@packets : Array(Packet)? = nil, @updateAt : Time = Time.local)
+      end
+
+      def self.new(packet : Packet? = nil, updateAt : Time = Time.local)
+        new [packet], updateAt
       end
 
       def refresh

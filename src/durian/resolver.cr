@@ -1,7 +1,7 @@
 class Durian::Resolver
   IPAddressRecordFlags = [RecordFlag::A, RecordFlag::AAAA]
 
-  alias ResolveResponse = Array(Tuple(String, RecordFlag, Packet))
+  alias ResolveResponse = Array(Tuple(String, RecordFlag, Array(Packet)))
   alias ResolveTask = Tuple(Array(RecordFlag), Bool, Proc(ResolveResponse, Nil))
   alias AliasServer = Hash(String, String | Array(Socket::IPAddress))
 
@@ -44,8 +44,8 @@ class Durian::Resolver
     @coffee
   end
 
-  def resolve_by_flag!(specify : Array(Tuple(Socket::IPAddress, Protocol))?, host : String,
-                       flag : RecordFlag, strict_answer : Bool = false) : Packet?
+  def query_record!(specify : Array(Tuple(Socket::IPAddress, Protocol))?, host : String,
+                    flag : RecordFlag, strict_answer : Bool = false) : Array(Packet)?
     servers = specify || dnsServers
 
     task_mutex = Mutex.new :unchecked
@@ -56,7 +56,7 @@ class Durian::Resolver
         socket = Network.create server, option.timeout rescue nil
         next response_packets_list << nil unless socket
 
-        packet = resolve_by_flag! socket, host, flag rescue nil
+        packet = query_record! socket, host, flag rescue nil
 
         unless packet
           socket.close
@@ -86,40 +86,7 @@ class Durian::Resolver
 
     loop do
       next sleep 0.05_f32.seconds if response_packets_list.size != servers.size
-      return merge_packets response_packets_list
-    end
-  end
-
-  def merge_packets(packets : Array(Packet?)) : Packet?
-    packets.each do |packet|
-      next unless _packet = packet
-
-      merged = Packet.new _packet.protocol, _packet.qrFlag
-      merged.queries = _packet.queries
-
-      packets.map do |__packet|
-        next unless ___packet = __packet
-
-        ___packet.answers.each { |answers| merged.answers << answers }
-        ___packet.authority.each { |authority| merged.authority << authority }
-        ___packet.additional.each { |additional| merged.additional << additional }
-      end
-
-      merged.transId = _packet.transId
-      merged.operationCode = _packet.operationCode
-      merged.error = _packet.error
-      merged.authoritativeAnswer = _packet.authoritativeAnswer
-      merged.truncated = _packet.truncated
-      merged.recursionDesired = _packet.recursionDesired
-      merged.recursionAvailable = _packet.recursionAvailable
-      merged.authenticatedData = _packet.authenticatedData
-      merged.checkingDisabled = _packet.checkingDisabled
-      merged.questionCount = merged.queries.size.to_u16
-      merged.answerCount = merged.answers.size.to_u16
-      merged.authorityCount = merged.authority.size.to_u16
-      merged.additionalCount = merged.additional.size.to_u16
-
-      return merged
+      return response_packets_list.compact
     end
   end
 
@@ -133,7 +100,7 @@ class Durian::Resolver
     retry.mismatch
   end
 
-  def resolve_by_flag!(socket : IPSocket, host : String, flag : RecordFlag, strict_answer : Bool = false) : Packet?
+  def query_record!(socket : IPSocket, host : String, flag : RecordFlag, strict_answer : Bool = false) : Packet?
     buffer = uninitialized UInt8[4096_i32]
     protocol = get_socket_protocol socket
 
@@ -172,47 +139,50 @@ class Durian::Resolver
     end
   end
 
-  private def self.extract_all_ip_address(host : String, port : Int32, resolve_response : ResolveResponse,
+  private def self.extract_all_ip_address(host : String, port : Int32, resolve_responses : ResolveResponse,
                                           list : Array(Socket::IPAddress))
-    resolve_response.each do |response|
-      host, flag, response = response
-      alias_server = AliasServer.new
+    resolve_responses.each do |response|
+      host, flag, packets = response
 
-      response.answers.each do |answers|
-        _record = answers.resourceRecord
-        next unless from = _record.from
+      packets.each do |packet|
+        alias_server = AliasServer.new
 
-        case _record
-        when Record::AAAA
-          return unless _record.responds_to? :ipv6Address
-          return unless ipv6_address = _record.ipv6Address
-          ipv6_address = Socket::IPAddress.new ipv6_address.address, port
+        packet.answers.each do |answer|
+          _record = answer.resourceRecord
+          next unless from = _record.from
 
-          next list << ipv6_address if host == from
-          alias_server[from] = Array(Socket::IPAddress).new unless alias_server[from]?
+          case _record
+          when Record::AAAA
+            return unless _record.responds_to? :ipv6Address
+            return unless ipv6_address = _record.ipv6Address
+            ipv6_address = Socket::IPAddress.new ipv6_address.address, port
 
-          next unless alias_list = alias_server[from]?
-          alias_list << ipv6_address if alias_list.is_a? Array(Socket::IPAddress)
-        when Record::A
-          return unless _record.responds_to? :ipv4Address
-          return unless ipv4_address = _record.ipv4Address
-          ipv4_address = Socket::IPAddress.new ipv4_address.address, port
+            next list << ipv6_address if host == from
+            alias_server[from] = Array(Socket::IPAddress).new unless alias_server[from]?
 
-          next list << ipv4_address if host == from
-          alias_server[from] = Array(Socket::IPAddress).new unless alias_server[from]?
+            next unless alias_list = alias_server[from]?
+            alias_list << ipv6_address if alias_list.is_a? Array(Socket::IPAddress)
+          when Record::A
+            return unless _record.responds_to? :ipv4Address
+            return unless ipv4_address = _record.ipv4Address
+            ipv4_address = Socket::IPAddress.new ipv4_address.address, port
 
-          next unless alias_list = alias_server[from]?
-          alias_list << ipv4_address if alias_list.is_a? Array(Socket::IPAddress)
-        when Record::CNAME
-          return unless _record.responds_to? :canonicalName
+            next list << ipv4_address if host == from
+            alias_server[from] = Array(Socket::IPAddress).new unless alias_server[from]?
 
-          alias_server[from] = _record.canonicalName
-        else
+            next unless alias_list = alias_server[from]?
+            alias_list << ipv4_address if alias_list.is_a? Array(Socket::IPAddress)
+          when Record::CNAME
+            return unless _record.responds_to? :canonicalName
+
+            alias_server[from] = _record.canonicalName
+          else
+          end
         end
-      end
 
-      extract_canonical_name_ip_address host, alias_server, list
-      alias_server.clear
+        extract_canonical_name_ip_address host, alias_server, list
+        alias_server.clear
+      end
     end
   end
 
@@ -338,6 +308,7 @@ class Durian::Resolver
       extract_all_ip_address host, port, resolve_response, list
     end
 
+    list = list.uniq
     resolver.ip_cache.try &.set host, list unless list.empty?
     Tuple.new Fetch::Remote, list
   end
@@ -397,8 +368,12 @@ class Durian::Resolver
     Socket::IPAddress.new host, 0_i32 rescue nil
   end
 
+  def set_cache(host, packets : Array(Packet), flag : RecordFlag)
+    cache.try &.set host, packets, flag
+  end
+
   def set_cache(host, packet : Packet, flag : RecordFlag)
-    cache.try &.set host, packet, flag
+    cache.try &.set host, [packet], flag
   end
 
   def fetch_raw_cache(host, flag : RecordFlag)
@@ -429,11 +404,11 @@ class Durian::Resolver
   end
 
   def resolve_task(specify : Array(Tuple(Socket::IPAddress, Protocol))?, host : String, task : ResolveTask)
-    packets = [] of Tuple(String, RecordFlag, Packet)
+    response = [] of Tuple(String, RecordFlag, Array(Packet))
     flags, strict_answer, proc = task
 
-    cache_fetch = fetch_cache host, flags, packets
-    return proc.call packets if cache_fetch.size == flags.size
+    cache_fetch = fetch_cache host, flags, response
+    return proc.call response if cache_fetch.size == flags.size
 
     flags = flags - cache_fetch
     ip_address = to_ip_address host
@@ -441,13 +416,13 @@ class Durian::Resolver
     flags.each do |flag|
       next if cache_fetch.includes? flag
       next if ip_address && IPAddressRecordFlags.includes? flag
-      next unless packet = resolve_by_flag! specify, host, flag, strict_answer
+      next unless resolve_packets = query_record! specify, host, flag, strict_answer
 
-      packets << Tuple.new host, flag, packet
-      set_cache host, packet, flag
+      response << Tuple.new host, flag, resolve_packets
+      set_cache host, resolve_packets, flag
     end
 
-    proc.call packets
+    proc.call response
   end
 
   def resolve(host, flag : RecordFlag, strict_answer : Bool = false, &callback : ResolveResponse ->)
