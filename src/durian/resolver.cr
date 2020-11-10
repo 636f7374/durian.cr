@@ -193,11 +193,11 @@ class Durian::Resolver
     ip_cache.get host, port
   end
 
-  def self.getaddrinfo!(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Socket::IPAddress)
+  def self.getaddrinfo!(host : String, port : Int32, resolver : Resolver, try_connect : Bool = true) : Tuple(Fetch, Socket::IPAddress)
     method, list = getaddrinfo_all host, port, resolver
     raise Socket::Error.new "Invalid host address" if list.empty?
 
-    return Tuple.new method, list.first if 1_i32 == list.size || resolver.option.retry.nil?
+    return Tuple.new method, list.first if 1_i32 == list.size || resolver.option.retry.nil? || !try_connect
 
     ip_address = TCPSocket.try_connect_ip_address list, resolver.option.retry
     raise Socket::Error.new "IP address cannot connect" unless ip_address
