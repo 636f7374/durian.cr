@@ -9,11 +9,15 @@ class Durian::Resolver
   property tasks : Hash(String, Hash(String, ResolveTask))
   property option : Option
   property mutex : Mutex
+  property getaddrinfoPendingList : Array(String)
+  property getaddrinfoPendingMutex : Mutex
 
   def initialize(@dnsServers : Array(Tuple(Socket::IPAddress, Protocol)))
     @tasks = Hash(String, Hash(String, ResolveTask)).new
     @option = Option.new
     @mutex = Mutex.new :unchecked
+    @getaddrinfoPendingList = Array(String).new
+    @getaddrinfoPendingMutex = Mutex.new :unchecked
   end
 
   def self.new(dns_server : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32), protocol : Protocol = Protocol::UDP)
@@ -273,10 +277,6 @@ class Durian::Resolver
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Array(Socket::IPAddress))
-    # Fetch data from Cloudflare
-    _from_cloudflare = from_cloudflare host, port, resolver
-    return Tuple.new Fetch::Coffee, _from_cloudflare if _from_cloudflare
-
     # Mapping
     _mapping = resolver.mapping? host, port
 
@@ -289,6 +289,13 @@ class Durian::Resolver
     host, port = _address if _address
     ip_address = Socket::IPAddress.new host, port rescue nil
     return Tuple.new Fetch::Local, [ip_address] if ip_address
+
+    # Fetch data from Cloudflare
+    _from_cloudflare = from_cloudflare host, port, resolver
+    return Tuple.new Fetch::Coffee, _from_cloudflare if _from_cloudflare
+
+    # Set Pending
+    resolver.pending_getaddrinfo_fetch host, port, resolver if resolver.ip_cache
 
     # Fetch data from IP cache
     from_ip_cache = fetch_ip_cache host, port, resolver.ip_cache
@@ -310,7 +317,37 @@ class Durian::Resolver
 
     list = list.uniq
     resolver.ip_cache.try &.set host, list unless list.empty?
+
+    # Remove Pending
+    resolver.remove_getaddrinfo_pendding host if resolver.ip_cache
+
     Tuple.new Fetch::Remote, list
+  end
+
+  def pending_getaddrinfo_fetch(host : String, port : Int32, resolver : Resolver) : Nil
+    from_ip_cache = Resolver.fetch_ip_cache host, port, resolver.ip_cache
+    return if from_ip_cache
+
+    if getaddrinfoPendingList.includes? host
+      before_time = Time.local
+
+      loop do
+        break if 5_i32.seconds <= (Time.local - before_time)
+        next sleep 0.05_f32 if getaddrinfoPendingList.includes? host
+      end
+    end
+
+    getaddrinfoPendingMutex.synchronize do
+      getaddrinfoPendingList << host unless getaddrinfoPendingList.includes? host
+    end
+  end
+
+  def remove_getaddrinfo_pendding(host : String) : Bool
+    getaddrinfoPendingMutex.synchronize do
+      getaddrinfoPendingList.delete host
+    end
+
+    true
   end
 
   {% for name in ["mapping", "specify", "cloudflare"] %}
