@@ -64,12 +64,12 @@ class Durian::Resolver
 
         unless packet
           socket.close
-          next response_packets_list << nil
+          next task_mutex.synchronize { response_packets_list << nil }
         end
 
         if packet.answerCount.zero? || packet.answers.empty?
           socket.close
-          next response_packets_list << nil
+          next task_mutex.synchronize { response_packets_list << nil }
         end
 
         if strict_answer
@@ -79,7 +79,7 @@ class Durian::Resolver
 
           unless include_flag
             socket.close
-            next response_packets_list << nil
+            next task_mutex.synchronize { response_packets_list << nil }
           end
         end
 
