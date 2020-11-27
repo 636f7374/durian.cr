@@ -112,7 +112,7 @@ servers << Tuple.new Socket::IPAddress.new("8.8.8.8", 53_i32), Durian::Protocol:
 servers << Tuple.new Socket::IPAddress.new("1.1.1.1", 53_i32), Durian::Protocol::UDP
 
 resolver = Durian::Resolver.new servers
-resolver.cache = Durian::Cache.new
+resolver.record_cache = Durian::Cache::Record.new
 
 resolver.resolve "google.com", [Durian::RecordFlag::A, Durian::RecordFlag::AAAA] do |response|
   STDOUT.puts [:Google, Time.utc, response]
@@ -144,7 +144,7 @@ request = Durian::Packet.new Durian::Protocol::UDP, Durian::Packet::QRFlag::Quer
 request.add_query "www.example.com", Durian::RecordFlag::A
 
 _request = IO::Memory.new request.to_slice
-STDOUT.puts [:Request, Durian::Packet.from_io Durian::Protocol::UDP, Durian::Packet::QRFlag::Query, _request]
+STDOUT.puts [:Request, Durian::Packet.from_io Durian::Protocol::UDP, _request]
 
 udp_socket = UDPSocket.new
 udp_socket.connect Socket::IPAddress.new "8.8.8.8", 53_i32
@@ -152,7 +152,7 @@ udp_socket.send _request.to_slice
 length, ip_address = udp_socket.receive buffer.to_slice
 
 _response = IO::Memory.new buffer.to_slice[0_i32, length]
-STDOUT.puts [:Response, Durian::Packet.from_io Durian::Protocol::UDP, Durian::Packet::QRFlag::Response, _response]
+STDOUT.puts [:Response, Durian::Packet.from_io Durian::Protocol::UDP, _response]
 ```
 
 ### Used as Shard

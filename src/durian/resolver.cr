@@ -22,20 +22,20 @@ class Durian::Resolver
     new [Tuple.new dns_server, protocol]
   end
 
-  def cache=(value : Cache)
-    @cache = value
+  def record_cache=(value : Cache::Record)
+    @recordCache = value
   end
 
-  def cache
-    @cache
+  def record_cache
+    @recordCache
   end
 
   def ip_cache=(value : Cache::IPAddress)
-    @ip_cache = value
+    @ipCache = value
   end
 
   def ip_cache
-    @ip_cache
+    @ipCache
   end
 
   def coffee=(value : Coffee::Scanner)
@@ -393,21 +393,21 @@ class Durian::Resolver
     Socket::IPAddress.new host, 0_i32 rescue nil
   end
 
-  def set_cache(host, packets : Array(Packet), flag : RecordFlag)
-    cache.try &.set host, packets, flag
+  def set_record_cache(host, packets : Array(Packet), flag : RecordFlag)
+    record_cache.try &.set host, packets, flag
   end
 
-  def set_cache(host, packet : Packet, flag : RecordFlag)
-    cache.try &.set host, [packet], flag
+  def set_record_cache(host, packet : Packet, flag : RecordFlag)
+    record_cache.try &.set host, [packet], flag
   end
 
-  def fetch_raw_cache(host, flag : RecordFlag)
-    cache.try &.get host, flag
+  def fetch_record_cache(host, flag : RecordFlag)
+    record_cache.try &.get host, flag
   end
 
   def cache_expires?(host, flags : Array(RecordFlag))
     expires = [] of RecordFlag
-    return expires unless _cache = cache
+    return expires unless _cache = record_cache
 
     flags.each { |flag| expires << flag if _cache.expired? host, flag }
 
@@ -419,7 +419,7 @@ class Durian::Resolver
     fetch = [] of RecordFlag
 
     flags.each do |flag|
-      next unless packet = fetch_raw_cache host, flag
+      next unless packet = fetch_record_cache host, flag
 
       resolve_response << Tuple.new host, flag, packet
       fetch << flag
@@ -444,7 +444,7 @@ class Durian::Resolver
       next unless resolve_packets = query_record! specify, host, flag, strict_answer
 
       response << Tuple.new host, flag, resolve_packets
-      set_cache host, resolve_packets, flag
+      set_record_cache host, resolve_packets, flag
     end
 
     proc.call response
