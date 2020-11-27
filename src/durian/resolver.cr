@@ -9,15 +9,13 @@ class Durian::Resolver
   property tasks : Hash(String, Hash(String, ResolveTask))
   property option : Option
   property mutex : Mutex
-  property getaddrinfoPendingList : Array(String)
-  property getaddrinfoPendingMutex : Mutex
+  property getaddrinfoPendingList : PendingList
 
   def initialize(@dnsServers : Array(Tuple(Socket::IPAddress, Protocol)))
     @tasks = Hash(String, Hash(String, ResolveTask)).new
     @option = Option.new
     @mutex = Mutex.new :unchecked
-    @getaddrinfoPendingList = Array(String).new
-    @getaddrinfoPendingMutex = Mutex.new :unchecked
+    @getaddrinfoPendingList = PendingList.new
   end
 
   def self.new(dns_server : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32), protocol : Protocol = Protocol::UDP)
@@ -319,7 +317,7 @@ class Durian::Resolver
     resolver.ip_cache.try &.set host, list unless list.empty?
 
     # Remove Pending
-    resolver.remove_getaddrinfo_pendding host if resolver.ip_cache
+    resolver.getaddrinfoPendingList.delete host if resolver.ip_cache
 
     Tuple.new Fetch::Remote, list
   end
@@ -337,17 +335,7 @@ class Durian::Resolver
       end
     end
 
-    getaddrinfoPendingMutex.synchronize do
-      getaddrinfoPendingList << host unless getaddrinfoPendingList.includes? host
-    end
-  end
-
-  def remove_getaddrinfo_pendding(host : String) : Bool
-    getaddrinfoPendingMutex.synchronize do
-      getaddrinfoPendingList.delete host
-    end
-
-    true
+    getaddrinfoPendingList << host unless getaddrinfoPendingList.includes? host
   end
 
   {% for name in ["mapping", "specify", "cloudflare"] %}
