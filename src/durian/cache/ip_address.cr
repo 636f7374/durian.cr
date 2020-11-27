@@ -15,119 +15,127 @@ class Durian::Cache
       @mutex = Mutex.new :unchecked
     end
 
-    def refresh
+    def size
+      @mutex.synchronize { storage.size }
+    end
+
+    def empty? : Bool
+      @mutex.synchronize { storage.empty? }
+    end
+
+    def refresh_clean_at
       @cleanAt = Time.local
     end
 
     def full?
-      capacity <= size
+      capacity <= self.size
     end
 
     def clean_expired?
-      (Time.local - cleanAt) > cleanInterval
+      timing = Time.local - cleanAt
+      timing > cleanInterval
     end
 
-    def reset
-      self.storage.clear
+    def clear
+      @mutex.synchronize { self.storage.clear }
     end
 
-    def []=(name, value : Socket::IPAddress)
-      set name, value
+    def []=(domain, ip_address : Socket::IPAddress)
+      set domain, ip_address
     end
 
-    def []=(name, value : Array(Socket::IPAddress))
-      set name, value
+    def []=(domain, ip_address : Array(Socket::IPAddress))
+      set domain, ip_address
     end
 
-    def [](name : String)
-      value = storage[name]
-
-      if value
-        value.refresh
-        value.tap
-      end
-
-      value
-    end
-
-    def []?(name : String)
-      value = storage[name]?
-
-      if value
-        value.refresh
-        value.tap
-      end
-
-      value
-    end
-
-    def expired?(name : String)
-      return unless entry = storage[name]?
-      return true if entry.ipAddress.empty?
-
-      (Time.local - entry.accessAt) > recordExpires
-    end
-
-    def get(name : String, port : Int32) : Array(Socket::IPAddress)?
-      return unless entry = storage[name]?
-
-      entry.refresh ensure entry.tap
-      list = [] of Socket::IPAddress
-
-      entry.ipAddress.each do |ip_address|
-        list << Socket::IPAddress.new ip_address.address, port
-      end
-
-      return if list.empty?
-      list
-    end
-
-    def get(name : String) : Array(Socket::IPAddress)?
-      return unless entry = storage[name]?
-
-      entry.refresh ensure entry.tap
-      entry.ipAddress
-    end
-
-    def set(name : String, ip_address : Socket::IPAddress)
-      set name, [ip_address]
-    end
-
-    def set(name : String, ip_address : Array(Socket::IPAddress))
-      return if ip_address.empty?
-
+    def [](domain : String)
       @mutex.synchronize do
-        inactive_clean
+        return unless entry = storage[domain]
 
-        unless storage[name]?
-          self.storage[name] = Entry.new ip_address
+        entry.refresh_access_at
+        entry.tap
 
-          return
+        entry
+      end
+    end
+
+    def []?(domain : String)
+      @mutex.synchronize do
+        return unless entry = storage[domain]?
+
+        entry.refresh_access_at
+        entry.tap
+
+        entry
+      end
+    end
+
+    def expired?(domain : String)
+      @mutex.synchronize do
+        return unless entry = storage[domain]?
+        return true if entry.ipAddress.empty?
+
+        timing = Time.local - entry.accessAt
+        timing > recordExpires
+      end
+    end
+
+    def get(domain : String, port : Int32) : Array(Socket::IPAddress)?
+      @mutex.synchronize do
+        return unless entry = storage[domain]?
+
+        entry.refresh_access_at
+        entry.tap
+
+        list = [] of Socket::IPAddress
+
+        entry.ipAddress.each do |ip_address|
+          list << Socket::IPAddress.new ip_address.address, port
         end
 
-        return unless entry = storage[name]?
-
-        entry.ipAddress = ip_address
-        entry.refresh
+        return if list.empty?
+        list
       end
     end
 
-    def size
-      storage.size
+    def get(domain : String) : Array(Socket::IPAddress)?
+      @mutex.synchronize do
+        return unless entry = storage[domain]?
+
+        entry.refresh_access_at
+        entry.tap
+        entry.ipAddress
+      end
     end
 
-    def empty?
-      storage.empty?
+    def set(domain : String, ip_address : Socket::IPAddress)
+      set domain, [ip_address]
+    end
+
+    def set(domain : String, ip_address : Array(Socket::IPAddress))
+      return if ip_address.empty?
+      inactive_clean
+
+      @mutex.synchronize do
+        unless self.storage[domain]?
+          self.storage[domain] = Entry.new ip_address
+        end
+
+        return unless entry = storage[domain]?
+
+        entry.ipAddress = ip_address
+        entry.refresh_access_at
+      end
     end
 
     def inactive_clean
       case {full?, clean_expired?}
       when {true, false}
         clean_by_tap
-        refresh
+        refresh_clean_at
       when {true, true}
         clean_by_access_at
-        refresh
+        refresh_clean_at
       else
       end
     end
@@ -135,31 +143,31 @@ class Durian::Cache
     {% for name in ["tap", "access_at"] %}
     private def clean_by_{{name.id}}
       {% if name.id == "access_at" %}
-      	temporary = [] of Tuple(Time, String)
+      	temporary_list = [] of Tuple(Time, String)
       {% elsif name.id == "tap" %}
-      	temporary = [] of Tuple(Int64, String)
+      	temporary_list = [] of Tuple(Int64, String)
       {% end %}
 
       _maximum = maximumCleanup - 1_i32
 
-      storage.each do |name, entry|
-      	{% if name.id == "access_at" %}
-          temporary << Tuple.new entry.accessAt, name
-      	{% elsif name.id == "tap" %}
-      	  temporary << Tuple.new entry.tapCount.get, name
-      	{% end %}
-      end
+      @mutex.synchronize do
+        storage.each do |domain, entry|
+      	 {% if name.id == "access_at" %}
+            temporary_list << Tuple.new entry.accessAt, domain
+      	 {% elsif name.id == "tap" %}
+      	    temporary_list << Tuple.new entry.tapCount.get, domain
+      	 {% end %}
+        end
 
-      _sort = temporary.sort do |x, y|
-        x.first <=> y.first
-      end
+        _sort = temporary_list.sort do |x, y|
+          x.first <=> y.first
+        end
 
-      _sort.each_with_index do |sort, index|
-        break if index > _maximum
-        self.storage.delete sort.last
+        _sort.each_with_index do |sort, index|
+          break if index > _maximum
+          self.storage.delete sort.last
+        end
       end
-
-      temporary.clear ensure _sort.clear
     end
     {% end %}
 
@@ -177,7 +185,7 @@ class Durian::Cache
         tapCount.add 1_i64
       end
 
-      def refresh
+      def refresh_access_at
         @accessAt = Time.local
       end
     end

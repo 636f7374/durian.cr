@@ -15,69 +15,84 @@ class Durian::Cache
       @mutex = Mutex.new :unchecked
     end
 
-    def refresh
+    def size
+      @mutex.synchronize { storage.size }
+    end
+
+    def empty? : Bool
+      @mutex.synchronize { storage.empty? }
+    end
+
+    def refresh_clean_at
       @cleanAt = Time.local
     end
 
     def full?
-      capacity <= size
+      capacity <= self.size
     end
 
     def clean_expired?
-      (Time.local - cleanAt) > cleanInterval
+      timing = Time.local - cleanAt
+      timing > cleanInterval
     end
 
-    def reset
-      self.storage.clear
+    def clear
+      @mutex.synchronize { self.storage.clear }
     end
 
-    def []=(name, value : Entry)
-      set name, value
+    def []=(domain, value : Entry)
+      set domain, value
     end
 
-    def [](name : String)
-      value = storage[name]
-
-      if value
-        value.refresh
-        value.tap
-      end
-
-      value
-    end
-
-    def []?(name : String)
-      value = storage[name]?
-
-      if value
-        value.refresh
-        value.tap
-      end
-
-      value
-    end
-
-    def expired?(name, flag : RecordFlag)
-      return unless entry = storage[name]?
-      return unless updated_at = entry.update_at? flag
-
-      (Time.local - updated_at) > recordExpires
-    end
-
-    def get(name, flag : RecordFlag) : Array(Packet)?
-      return unless entry = storage[name]?
-      return unless _record = entry.record? flag
-
-      entry.refresh ensure entry.tap
-      _record.packets
-    end
-
-    def set(name : String, packets : Array(Packet), flag : RecordFlag)
+    def [](domain : String)
       @mutex.synchronize do
-        inactive_clean
+        return unless entry = storage[domain]
 
-        self.storage[name] = Entry.new unless storage[name]?
-        return unless entry = storage[name]?
+        entry.refresh_update_at
+        entry.tap
+
+        entry
+      end
+    end
+
+    def []?(domain : String)
+      @mutex.synchronize do
+        return unless entry = storage[domain]?
+
+        entry.refresh_update_at
+        entry.tap
+
+        entry
+      end
+    end
+
+    def expired?(domain, flag : RecordFlag)
+      @mutex.synchronize do
+        return unless entry = storage[domain]?
+        return unless updated_at = entry.update_at? flag
+
+        timing = Time.local - updated_at
+        timing > recordExpires
+      end
+    end
+
+    def get(domain, flag : RecordFlag) : Array(Packet)?
+      @mutex.synchronize do
+        return unless entry = storage[domain]?
+        return unless _record = entry.record? flag
+
+        entry.refresh_access_at
+        entry.tap
+        _record.packets
+      end
+    end
+
+    def set(domain : String, packets : Array(Packet), flag : RecordFlag)
+      inactive_clean
+
+      @mutex.synchronize do
+        self.storage[domain] = Entry.new unless storage[domain]?
+        return unless entry = storage[domain]?
 
         set entry, packets, flag
       end
@@ -87,25 +102,17 @@ class Durian::Cache
       return unless item = entry.force_fetch flag
 
       item.packets = packets
-      item.refresh
-    end
-
-    def size
-      storage.size
-    end
-
-    def empty?
-      storage.empty?
+      item.refresh_update_at
     end
 
     def inactive_clean
       case {full?, clean_expired?}
       when {true, false}
         clean_by_tap
-        refresh
+        refresh_clean_at
       when {true, true}
         clean_by_access_at
-        refresh
+        refresh_clean_at
       else
       end
     end
@@ -113,47 +120,47 @@ class Durian::Cache
     {% for name in ["tap", "access_at"] %}
     private def clean_by_{{name.id}}
       {% if name.id == "access_at" %}
-        temporary = [] of Tuple(Time, String)
+        temporary_list = [] of Tuple(Time, String)
       {% elsif name.id == "tap" %}
-        temporary = [] of Tuple(Int64, String)
+        temporary_list = [] of Tuple(Int64, String)
       {% end %}
 
       _maximum = maximumCleanup - 1_i32
 
-      storage.each do |name, entry|
-        {% if name.id == "access_at" %}
-          temporary << Tuple.new entry.accessAt, name
-        {% elsif name.id == "tap" %}
-          temporary << Tuple.new entry.tapCount.get, name
-        {% end %}
-      end
+      @mutex.synchronize do
+        storage.each do |domain, entry|
+          {% if name.id == "access_at" %}
+            temporary_list << Tuple.new entry.accessAt, domain
+          {% elsif name.id == "tap" %}
+            temporary_list << Tuple.new entry.tapCount.get, domain
+          {% end %}
+        end
 
-      _sort = temporary.sort do |x, y|
-        x.first <=> y.first
-      end
+        _sort = temporary_list.sort do |x, y|
+          x.first <=> y.first
+        end
 
-      _sort.each_with_index do |sort, index|
-        break if index > _maximum
-        self.storage.delete sort.last
+        _sort.each_with_index do |sort, index|
+          break if index > _maximum
+          self.storage.delete sort.last
+        end
       end
-
-      temporary.clear ensure _sort.clear
     end
     {% end %}
 
     class Entry
       property accessAt : Time
       property tapCount : Atomic(Int64)
-      property a : Entry?
-      property aaaa : Entry?
-      property ns : Entry?
-      property ptr : Entry?
-      property cname : Entry?
-      property soa : Entry?
-      property txt : Entry?
-      property mx : Entry?
-      property dname : Entry?
-      property srv : Entry?
+      property a : PacketList?
+      property aaaa : PacketList?
+      property ns : PacketList?
+      property ptr : PacketList?
+      property cname : PacketList?
+      property soa : PacketList?
+      property txt : PacketList?
+      property mx : PacketList?
+      property dname : PacketList?
+      property srv : PacketList?
 
       def initialize(@accessAt : Time = Time.local, @tapCount : Atomic(Int64) = Atomic(Int64).new 0_i64)
         @a = nil
@@ -172,13 +179,13 @@ class Durian::Cache
         tapCount.add 1_i64
       end
 
-      def refresh
+      def refresh_access_at
         @accessAt = Time.local
       end
 
       {% for name in AvailableRecordFlag %}
       def create_{{name.downcase.id}}
-        self.{{name.downcase.id}} = Entry.new
+        self.{{name.downcase.id}} = PacketList.new
       end
       {% end %}
 
@@ -218,7 +225,7 @@ class Durian::Cache
         record? flag
       end
 
-      class Entry
+      class PacketList
         property packets : Array(Packet)?
         property updateAt : Time
 
@@ -229,7 +236,7 @@ class Durian::Cache
           new [packet], updateAt
         end
 
-        def refresh
+        def refresh_update_at
           @updateAt = Time.local
         end
       end

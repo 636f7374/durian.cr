@@ -8,14 +8,14 @@ class Durian::PendingList
   end
 
   def <<(domain : String)
-    getaddrinfoMutex.synchronize { getaddrinfoList << domain }
+    @getaddrinfoMutex.synchronize { getaddrinfoList << domain }
   end
 
   def delete(domain : String)
-    getaddrinfoMutex.synchronize { getaddrinfoList.delete domain }
+    @getaddrinfoMutex.synchronize { getaddrinfoList.delete domain }
   end
 
   def includes?(domain : String) : Bool
-    getaddrinfoMutex.synchronize { getaddrinfoList.includes? domain }
+    @getaddrinfoMutex.synchronize { getaddrinfoList.includes? domain }
   end
 end
