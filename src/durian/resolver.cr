@@ -331,7 +331,9 @@ class Durian::Resolver
 
       loop do
         break if 5_i32.seconds <= (Time.local - before_time)
-        next sleep 0.05_f32 if getaddrinfoPendingList.includes? host
+        break unless getaddrinfoPendingList.includes? host
+
+        sleep 0.05_f32
       end
     end
 
