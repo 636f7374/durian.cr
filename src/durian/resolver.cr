@@ -56,7 +56,7 @@ class Durian::Resolver
     servers.each do |server|
       spawn do
         socket = Network.create server, option.timeout rescue nil
-        next response_packets_list << nil unless socket
+        next task_mutex.synchronize { response_packets_list << nil } unless socket
 
         packet = query_record! socket, host, flag rescue nil
 
@@ -88,7 +88,7 @@ class Durian::Resolver
 
     loop do
       next sleep 0.05_f32.seconds if response_packets_list.size != servers.size
-      return response_packets_list.compact
+      return task_mutex.synchronize { response_packets_list.compact }
     end
   end
 
