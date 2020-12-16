@@ -7,6 +7,10 @@ servers << Tuple.new Socket::IPAddress.new("1.1.1.1", 853_i32), Durian::Protocol
 resolver = Durian::Resolver.new servers
 resolver.record_cache = Durian::Cache::Record.new
 
+resolver.resolve "google.com", [Durian::RecordFlag::A, Durian::RecordFlag::AAAA] do |response|
+  STDOUT.puts [:Google, Time.utc, response]
+end
+
 resolver.resolve "twitter.com", Durian::RecordFlag::SOA do |response|
   STDOUT.puts [:Twitter, Time.utc, response]
 end
