@@ -1,16 +1,17 @@
 module Durian
   AvailableRecordFlag = ["A", "AAAA", "NS", "PTR", "CNAME", "SOA", "TXT", "MX", "DNAME", "SRV"]
 
-  enum Protocol
-    UDP
-    TCP
+  enum Protocol : UInt8
+    UDP = 0_u8
+    TCP = 1_u8
+    TLS = 2_u8
   end
 
-  enum Fetch
-    Coffee
-    Local
-    Cache
-    Remote
+  enum Fetch : UInt8
+    Coffee = 0_u8
+    Local  = 1_u8
+    Cache  = 2_u8
+    Remote = 3_u8
   end
 
   enum RecordFlag : UInt16
@@ -124,7 +125,7 @@ module Durian
   class BadPacket < Exception
   end
 
-  def self.decode_resource_pointer(io : IO, buffer : IO)
+  def self.decode_resource_pointer(protocol : Protocol, io : IO, buffer : IO)
     pointer = uninitialized UInt8[2_i32]
     pointer_flag = io.read pointer.to_slice
 
@@ -139,7 +140,7 @@ module Durian
     end
 
     buffer.write slice
-    decode_address_by_pointer buffer, slice[1_i32]
+    decode_address_by_pointer protocol, buffer, slice[1_i32]
   end
 
   def self.limit_length_buffer(io : IO, length : Int) : IO::Memory
@@ -169,45 +170,50 @@ module Durian
     io.write_byte 0_u8
   end
 
-  def self.decode_address_by_pointer(buffer : IO, offset : Int, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32, maximum_recursive : Int32 = 64_i32)
+  def self.decode_address_by_pointer(protocol : Protocol, buffer : IO, offset : Int, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32,
+                                     maximum_recursive : Int32 = 64_i32)
     return String.new if offset.zero?
     return String.new if offset > buffer.size
 
     before_buffer_pos = buffer.pos
     buffer.pos = offset
-    decode = decode_address buffer, nil, recursive_depth, maximum_length, maximum_recursive
+    buffer.pos += 2_i32 if protocol.tcp? || protocol.tls?
+
+    decode = decode_address protocol, buffer, nil, recursive_depth, maximum_length, maximum_recursive
     buffer.pos = before_buffer_pos
 
     decode
   end
 
-  def self.decode_address_by_pointer(io : IO, buffer : IO, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32, maximum_recursive : Int32 = 64_i32)
+  def self.decode_address_by_pointer(protocol : Protocol, io : IO, buffer : IO, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32,
+                                     maximum_recursive : Int32 = 64_i32)
     chunk_length = uninitialized UInt8[1_i32]
     length = io.read chunk_length.to_slice
 
     return String.new if length.zero?
-    return String.new if chunk_length.first.zero?
-    return String.new if chunk_length.first > buffer.size
+    return String.new if chunk_length.to_slice.first.zero?
+    return String.new if chunk_length.to_slice.first > buffer.size
 
-    decode_address_by_pointer buffer, chunk_length.first, recursive_depth, maximum_length, maximum_recursive
+    decode_address_by_pointer protocol, buffer, chunk_length.to_slice.first, recursive_depth, maximum_length, maximum_recursive
   end
 
-  def self.decode_address(io : IO, buffer : IO?, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32, maximum_recursive : Int32 = 64_i32)
+  def self.decode_address(protocol : Protocol, io : IO, buffer : IO?, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32,
+                          maximum_recursive : Int32 = 64_i32)
     chunk_length = uninitialized UInt8[1_i32]
     temporary = IO::Memory.new
 
     loop do
-      break if recursive_depth == maximum_recursive - 1_i32 || maximum_length <= temporary.size
+      break if recursive_depth == (maximum_recursive - 1_i32) || maximum_length <= temporary.size
 
       length = io.read chunk_length.to_slice
-      break if length.zero? || chunk_length.first.zero?
+      break if length.zero? || chunk_length.to_slice.first.zero?
       buffer = io unless buffer
 
-      if 0b11000000 == chunk_length.first
-        break temporary << decode_address_by_pointer io, buffer, recursive_depth + 1_i32, maximum_length, maximum_recursive
+      if 0b11000000 == chunk_length.to_slice.first
+        break temporary << decode_address_by_pointer protocol, io, buffer, recursive_depth + 1_i32, maximum_length, maximum_recursive
       end
 
-      IO.copy io, temporary, chunk_length.first
+      IO.copy io, temporary, chunk_length.to_slice.first
       temporary << "."
     end
 
@@ -218,7 +224,7 @@ module Durian
     _address
   end
 
-  def self.parse_strict_length_address(io : IO, length : Int, buffer : IO, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32, maximum_recursive : Int32 = 64_i32)
+  def self.parse_strict_length_address(protocol : Protocol, io : IO, length : Int, buffer : IO, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32, maximum_recursive : Int32 = 64_i32)
     return String.new if length > maximum_length
 
     temporary = limit_length_buffer io, length
@@ -230,13 +236,14 @@ module Durian
       return String.new
     end
 
-    decode = decode_address temporary, buffer, recursive_depth, maximum_length, maximum_recursive
+    decode = decode_address protocol, temporary, buffer, recursive_depth, maximum_length, maximum_recursive
     temporary.close
 
     decode
   end
 
-  def self.parse_chunk_address(io : IO, buffer : IO, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32, maximum_recursive : Int32 = 64_i32)
+  def self.parse_chunk_address(protocol : Protocol, io : IO, buffer : IO, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32,
+                               maximum_recursive : Int32 = 64_i32)
     chunk_length = uninitialized UInt8[1_i32]
     temporary = IO::Memory.new
     pointer_address_buffer = IO::Memory.new
@@ -249,7 +256,7 @@ module Durian
       break end_zero = true if chunk_length.first.zero?
 
       if 0b11000000 == chunk_length.first
-        break pointer_address_buffer << decode_address_by_pointer io, buffer
+        break pointer_address_buffer << decode_address_by_pointer protocol, io, buffer
       end
 
       temporary.write chunk_length.to_slice
@@ -261,7 +268,7 @@ module Durian
     buffer.write Bytes[0_i32] if end_zero
     temporary.rewind
 
-    decode = decode_address temporary, buffer, recursive_depth, maximum_length, maximum_recursive
+    decode = decode_address protocol, temporary, buffer, recursive_depth, maximum_length, maximum_recursive
     pointer_address = pointer_address_buffer.to_slice
     temporary.close ensure pointer_address_buffer.close
 

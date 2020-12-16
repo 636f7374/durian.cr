@@ -24,8 +24,8 @@ module Durian::Field
       question.encode io
     end
 
-    def self.decode(io : IO, buffer : IO)
-      query = Durian.parse_chunk_address io, buffer
+    def self.decode(protocol : Protocol, io : IO, buffer : IO)
+      query = Durian.parse_chunk_address protocol, io, buffer
       flag = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       _cls = io.read_bytes UInt16, IO::ByteFormat::BigEndian
 

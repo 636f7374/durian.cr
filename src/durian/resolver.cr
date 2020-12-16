@@ -92,8 +92,15 @@ class Durian::Resolver
     end
   end
 
-  def get_socket_protocol(socket : IPSocket)
-    socket.is_a?(TCPSocket) ? Protocol::TCP : Protocol::UDP
+  def get_socket_protocol(socket : IO) : Protocol?
+    case socket
+    when .is_a? TCPSocket
+      Protocol::TCP
+    when .is_a? UDPSocket
+      Protocol::UDP
+    when .is_a? OpenSSL::SSL::Socket::Client
+      Protocol::TLS
+    end
   end
 
   def mismatch_retry
@@ -102,9 +109,11 @@ class Durian::Resolver
     retry.mismatch
   end
 
-  def query_record!(socket : IPSocket, host : String, flag : RecordFlag, strict_answer : Bool = false) : Packet?
+  def query_record!(socket : IO?, host : String, flag : RecordFlag, strict_answer : Bool = false) : Packet?
+    return unless socket
+    return unless protocol = get_socket_protocol socket
+
     buffer = uninitialized UInt8[4096_i32]
-    protocol = get_socket_protocol socket
 
     request = Packet.new protocol: protocol, qrFlag: Packet::QRFlag::Query
     request.add_query host, flag
@@ -112,7 +121,7 @@ class Durian::Resolver
 
     mismatch_retry.times do
       length = socket.read buffer.to_slice
-      break if length.zero? && protocol.tcp?
+      break if length.zero? && (protocol.tcp? || protocol.tls?)
 
       io = IO::Memory.new buffer.to_slice[0_i32, length]
       response = Packet.from_io protocol: protocol, io: io

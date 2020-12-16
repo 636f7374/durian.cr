@@ -9,7 +9,7 @@ class Durian::Record
     end
 
     {% for name in ["authority", "answer", "additional"] %}
-  def self.{{name.id}}_from_io?(resource_record : MX, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
+  def self.{{name.id}}_from_io?(protocol, resource_record : MX, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
     data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
     buffer.write_bytes data_length, IO::ByteFormat::BigEndian
 
@@ -17,7 +17,7 @@ class Durian::Record
     IO.copy data_buffer, buffer ensure data_buffer.rewind
 
     resource_record.preference = data_buffer.read_bytes UInt16, IO::ByteFormat::BigEndian
-    resource_record.mailExchange = Durian.decode_address data_buffer, buffer
+    resource_record.mailExchange = Durian.decode_address protocol, data_buffer, buffer
   end
   {% end %}
   end

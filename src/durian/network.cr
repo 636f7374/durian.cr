@@ -16,6 +16,20 @@ module Durian::Network
       socket.write_timeout = write_timeout
 
       socket
+    when .tls?
+      socket = TCPSocket.new address, connect_timeout: connect_timeout
+      socket.read_timeout = read_timeout
+      socket.write_timeout = write_timeout
+
+      openssl_context = OpenSSL::SSL::Context::Client.new
+
+      begin
+        ssl_socket = OpenSSL::SSL::Socket::Client.new socket, context: openssl_context, sync_close: true
+      rescue ex
+        return socket.close
+      end
+
+      ssl_socket
     else
       socket = UDPSocket.new family: address.family
       socket.read_timeout = read_timeout

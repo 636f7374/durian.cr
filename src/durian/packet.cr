@@ -176,7 +176,7 @@ class Durian::Packet
     packet = new protocol: protocol
 
     begin
-      length = io.read_bytes UInt16, IO::ByteFormat::BigEndian if protocol.tcp?
+      length = io.read_bytes UInt16, IO::ByteFormat::BigEndian if protocol.tcp? || protocol.tls?
       trans_id = io.read_bytes UInt16, IO::ByteFormat::BigEndian
     rescue ex
       raise MalformedPacket.new ex.message
@@ -191,25 +191,25 @@ class Durian::Packet
     packet.questionCount.times do
       break if packet.bad_decode
 
-      packet.queries << Field::Question.decode io, buffer rescue packet.bad_decode = true
+      packet.queries << Field::Question.decode protocol, io, buffer rescue packet.bad_decode = true
     end
 
     packet.answerCount.times do
       break if packet.bad_decode
 
-      packet.answers << Field::Answer.decode io, buffer rescue packet.bad_decode = true
+      packet.answers << Field::Answer.decode protocol, io, buffer rescue packet.bad_decode = true
     end
 
     packet.authorityCount.times do
       break if packet.bad_decode
 
-      packet.authority << Field::Authority.decode io, buffer rescue packet.bad_decode = true
+      packet.authority << Field::Authority.decode protocol, io, buffer rescue packet.bad_decode = true
     end
 
     packet.additionalCount.times do
       break if packet.bad_decode
 
-      packet.additional << Field::Additional.decode io, buffer rescue packet.bad_decode = true
+      packet.additional << Field::Additional.decode protocol, io, buffer rescue packet.bad_decode = true
     end
 
     packet.buffer = buffer
@@ -228,6 +228,12 @@ class Durian::Packet
     when .udp?
       to_io io, qrFlag
     when .tcp?
+      temporary = IO::Memory.new
+      to_io temporary, qrFlag
+      length = temporary.size.to_u16
+      io.write_bytes length, IO::ByteFormat::BigEndian
+      io.write temporary.to_slice
+    when .tls?
       temporary = IO::Memory.new
       to_io temporary, qrFlag
       length = temporary.size.to_u16
