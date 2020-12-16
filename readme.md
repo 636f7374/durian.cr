@@ -62,6 +62,7 @@
 * [ ] More exception handling.
 * [ ] Support DNS server features.
 * [ ] Better performance, Better DNS cache.
+* [X] Supported DNS over TLS (DoT) feature.
 
 ## Usage
 
@@ -70,12 +71,11 @@
 ```crystal
 require "durian"
 
-servers = [] of Tuple(Socket::IPAddress, Durian::Protocol)
-servers << Tuple.new Socket::IPAddress.new("8.8.8.8", 53_i32), Durian::Protocol::UDP
-servers << Tuple.new Socket::IPAddress.new("1.1.1.1", 53_i32), Durian::Protocol::UDP
+servers = [] of Durian::Resolver::Server
+servers << Durian::Resolver::Server.new ipAddress: Socket::IPAddress.new("8.8.8.8", 53_i32), protocol: Durian::Protocol::UDP
+servers << Durian::Resolver::Server.new ipAddress: Socket::IPAddress.new("1.1.1.1", 53_i32), protocol: Durian::Protocol::UDP
 
 buffer = uninitialized UInt8[4096_i32]
-
 resolver = Durian::Resolver.new servers
 resolver.ip_cache = Durian::Cache::IPAddress.new
 
@@ -107,9 +107,9 @@ STDOUT.puts [length, String.new buffer.to_slice[0_i32, length]]
 ```crystal
 require "durian"
 
-servers = [] of Tuple(Socket::IPAddress, Durian::Protocol)
-servers << Tuple.new Socket::IPAddress.new("8.8.8.8", 53_i32), Durian::Protocol::UDP
-servers << Tuple.new Socket::IPAddress.new("1.1.1.1", 53_i32), Durian::Protocol::UDP
+servers = [] of Durian::Resolver::Server
+servers << Durian::Resolver::Server.new ipAddress: Socket::IPAddress.new("8.8.8.8", 53_i32), protocol: Durian::Protocol::UDP
+servers << Durian::Resolver::Server.new ipAddress: Socket::IPAddress.new("1.1.1.1", 53_i32), protocol: Durian::Protocol::UDP
 
 resolver = Durian::Resolver.new servers
 resolver.record_cache = Durian::Cache::Record.new

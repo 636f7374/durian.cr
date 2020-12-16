@@ -1,14 +1,14 @@
 class Durian::Option
   class Specify
     property from : String
-    property throughs : Array(Tuple(Socket::IPAddress, Protocol))
+    property throughs : Array(Resolver::Server)
     property isRegex : Bool?
     property isStrict : Bool?
     property withPort : Bool?
 
     def initialize
       @from = String.new
-      @throughs = [] of Tuple(Socket::IPAddress, Protocol)
+      @throughs = [] of Resolver::Server
       @isRegex = nil
       @isStrict = nil
       @withPort = nil

@@ -4,6 +4,7 @@ require "yaml"
 
 require "coffee"
 
+require "./durian/resolver/*"
 require "./durian/socket/*"
 require "./durian/extra/*"
 require "./durian/*"

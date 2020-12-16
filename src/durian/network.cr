@@ -1,14 +1,16 @@
 module Durian::Network
-  def self.create(item : Tuple(Socket::IPAddress, Protocol), timeout : Option::TimeOut)
+  def self.create(server : Durian::Resolver::Server, timeout : Option::TimeOut)
     read_timeout = timeout.read.seconds
     write_timeout = timeout.write.seconds
     connect_timeout = timeout.connect.seconds
 
-    create item.first, item.last, read_timeout, write_timeout, connect_timeout
+    create server.ipAddress, server.protocol, server.tls,
+      read_timeout, write_timeout, connect_timeout
   end
 
-  def self.create(address : Socket::IPAddress, protocol : Protocol, read_timeout : Time::Span = 5_i32.seconds,
-                  write_timeout : Time::Span = 5_i32.seconds, connect_timeout : Time::Span = 5_i32.seconds)
+  def self.create(address : Socket::IPAddress, protocol : Protocol, tls : Durian::Resolver::Server::TransportLayerSecurity? = nil,
+                  read_timeout : Time::Span = 5_i32.seconds, write_timeout : Time::Span = 5_i32.seconds,
+                  connect_timeout : Time::Span = 5_i32.seconds)
     case protocol
     when .tcp?
       socket = TCPSocket.new address, connect_timeout: connect_timeout
@@ -24,7 +26,8 @@ module Durian::Network
       openssl_context = OpenSSL::SSL::Context::Client.new
 
       begin
-        ssl_socket = OpenSSL::SSL::Socket::Client.new socket, context: openssl_context, sync_close: true
+        ssl_socket = OpenSSL::SSL::Socket::Client.new socket, context: openssl_context, sync_close: true, hostname: tls.try &.hostname
+        ssl_socket.sync = true
       rescue ex
         return socket.close
       end

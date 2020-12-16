@@ -1,8 +1,8 @@
 require "../src/durian.cr"
 
-servers = [] of Tuple(Socket::IPAddress, Durian::Protocol)
-servers << Tuple.new Socket::IPAddress.new("8.8.8.8", 53_i32), Durian::Protocol::TCP
-servers << Tuple.new Socket::IPAddress.new("1.1.1.1", 53_i32), Durian::Protocol::TCP
+servers = [] of Durian::Resolver::Server
+servers << Durian::Resolver::Server.new ipAddress: Socket::IPAddress.new("8.8.8.8", 53_i32), protocol: Durian::Protocol::TCP
+servers << Durian::Resolver::Server.new ipAddress: Socket::IPAddress.new("1.1.1.1", 53_i32), protocol: Durian::Protocol::TCP
 
 resolver = Durian::Resolver.new servers
 resolver.record_cache = Durian::Cache::Record.new

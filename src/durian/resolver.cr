@@ -5,13 +5,13 @@ class Durian::Resolver
   alias ResolveTask = Tuple(Array(RecordFlag), Bool, Proc(ResolveResponse, Nil))
   alias AliasServer = Hash(String, String | Array(Socket::IPAddress))
 
-  property dnsServers : Array(Tuple(Socket::IPAddress, Protocol))
+  property dnsServers : Array(Server)
   property tasks : Hash(String, Hash(String, ResolveTask))
   property option : Option
   property mutex : Mutex
   property getaddrinfoPendingList : PendingList
 
-  def initialize(@dnsServers : Array(Tuple(Socket::IPAddress, Protocol)))
+  def initialize(@dnsServers : Array(Server))
     @tasks = Hash(String, Hash(String, ResolveTask)).new
     @option = Option.new
     @mutex = Mutex.new :unchecked
@@ -19,7 +19,7 @@ class Durian::Resolver
   end
 
   def self.new(dns_server : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32), protocol : Protocol = Protocol::UDP)
-    new [Tuple.new dns_server, protocol]
+    new [Server.new dns_server, protocol]
   end
 
   def record_cache=(value : Cache::Record)
@@ -46,7 +46,7 @@ class Durian::Resolver
     @coffee
   end
 
-  def query_record!(specify : Array(Tuple(Socket::IPAddress, Protocol))?, host : String,
+  def query_record!(specify : Array(Server)?, host : String,
                     flag : RecordFlag, strict_answer : Bool = false) : Array(Packet)?
     servers = specify || dnsServers
 
@@ -245,24 +245,25 @@ class Durian::Resolver
   def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress? = nil,
                            dns_server : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32),
                            protocol : Protocol = Protocol::UDP,
+                           tls : Server::TransportLayerSecurity? = nil,
                            &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
-    yield getaddrinfo_all host, port, ip_cache, [Tuple.new dns_server, protocol]
+    yield getaddrinfo_all host, port, ip_cache, [Server.new dns_server, protocol, tls]
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress? = nil,
                            dns_server : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32),
-                           protocol : Protocol = Protocol::UDP) : Tuple(Fetch, Array(Socket::IPAddress))
-    getaddrinfo_all host, port, ip_cache, [Tuple.new dns_server, protocol]
+                           protocol : Protocol = Protocol::UDP,
+                           tls : Server::TransportLayerSecurity? = nil) : Tuple(Fetch, Array(Socket::IPAddress))
+    getaddrinfo_all host, port, ip_cache, [Server.new dns_server, protocol, tls]
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress?,
-                           dns_server : Array(Tuple(Socket::IPAddress, Protocol)),
-                           &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
+                           dns_server : Array(Server), &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
     yield getaddrinfo_all host, port, ip_cache, dns_server
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress?,
-                           dns_server : Array(Tuple(Socket::IPAddress, Protocol))) : Tuple(Fetch, Array(Socket::IPAddress))
+                           dns_server : Array(Server)) : Tuple(Fetch, Array(Socket::IPAddress))
     resolver = new dns_server
     resolver.ip_cache = ip_cache if ip_cache
 
@@ -439,7 +440,7 @@ class Durian::Resolver
     fetch
   end
 
-  def resolve_task(specify : Array(Tuple(Socket::IPAddress, Protocol))?, host : String, task : ResolveTask)
+  def resolve_task(specify : Array(Server)?, host : String, task : ResolveTask)
     response = [] of Tuple(String, RecordFlag, Array(Packet))
     flags, strict_answer, proc = task
 
@@ -488,8 +489,6 @@ class Durian::Resolver
   end
 
   private def handle_task(host : String, task : Hash(String, ResolveTask))
-    channel = Channel(String).new
-
     _host = host.dup
     _mapping = mapping? _host
     _to = mapping_to? _mapping if _mapping
@@ -501,20 +500,25 @@ class Durian::Resolver
     task.each do |id, item|
       spawn do
         resolve_task _throughs, _host, item
-      ensure
-        channel.send id
-      end
-    end
 
-    if task_id = channel.receive
-      @mutex.synchronize do
-        tasks[host]?.try { |_task| _task.delete task_id }
-        tasks.delete host if tasks[host].empty?
+        @mutex.synchronize do
+          tasks[_host]?.try { |_task| _task.delete id }
+          tasks.delete _host if tasks[_host].empty?
+        end
       end
     end
   end
 
   def run
-    tasks.each { |host, task| handle_task host, task }
+    tasks.each do |host, task|
+      handle_task host, task
+    end
+
+    loop do
+      tasks_size = @mutex.synchronize { tasks.size }
+      break if tasks_size.zero?
+
+      sleep 0.05_f32
+    end
   end
 end
