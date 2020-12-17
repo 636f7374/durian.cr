@@ -62,6 +62,8 @@ class Durian::Resolver
 
         unless packet
           socket.close
+          # socket.skip_finalize = true if socket.is_a? OpenSSL::SSL::Socket::Client
+
           next task_mutex.synchronize { response_packets_list << nil }
         end
 
@@ -205,26 +207,26 @@ class Durian::Resolver
   end
 
   def self.getaddrinfo!(host : String, port : Int32, resolver : Resolver, try_connect : Bool = true) : Tuple(Fetch, Socket::IPAddress)
-    method, list = getaddrinfo_all host, port, resolver
-    raise Socket::Error.new "Invalid host address" if list.empty?
+    fetch_list = getaddrinfo_all host, port, resolver
+    raise Socket::Error.new "Invalid host address" if fetch_list.empty?
 
-    return Tuple.new method, list.first if 1_i32 == list.size || resolver.option.retry.nil? || !try_connect
+    return Tuple.new fetch_list.type, fetch_list.first if 1_i32 == fetch_list.size || resolver.option.retry.nil? || !try_connect
 
-    ip_address = TCPSocket.try_connect_ip_address list, resolver.option.retry
+    ip_address = TCPSocket.try_connect_ip_address fetch_list.list, resolver.option.retry
     raise Socket::Error.new "IP address cannot connect" unless ip_address
 
-    Tuple.new method, ip_address
+    Tuple.new fetch_list.type, ip_address
   end
 
   def self.get_tcp_socket!(host : String, port : Int32, resolver : Resolver, connect_timeout : Int | Float? = nil) : ::TCPSocket
-    method, list = getaddrinfo_all host, port, resolver
-    raise Socket::Error.new "Invalid host address" if list.empty?
+    fetch_list = getaddrinfo_all host, port, resolver
+    raise Socket::Error.new "Invalid host address" if fetch_list.empty?
 
-    if 1_i32 == list.size || resolver.option.retry.nil?
-      return ::TCPSocket.new list.first.address, list.first.port, connect_timeout: connect_timeout || 5_i32
+    if 1_i32 == fetch_list.size || resolver.option.retry.nil?
+      return ::TCPSocket.new fetch_list.first.address, fetch_list.first.port, connect_timeout: connect_timeout || 5_i32
     end
 
-    choose = TCPSocket.choose_socket list, resolver.option.retry
+    choose = TCPSocket.choose_socket fetch_list.list, resolver.option.retry
     raise Socket::Error.new "IP address cannot connect" unless choose
 
     socket, ip_address = choose
@@ -233,11 +235,11 @@ class Durian::Resolver
   end
 
   def self.get_udp_socket!(host : String, port : Int32, resolver : Resolver) : ::UDPSocket
-    method, list = getaddrinfo_all host, port, resolver
-    raise Socket::Error.new "Invalid host address" if list.empty?
+    fetch_list = getaddrinfo_all host, port, resolver
+    raise Socket::Error.new "Invalid host address" if fetch_list.empty?
 
-    socket = UDPSocket.new list.first.family
-    socket.connect list.first
+    socket = UDPSocket.new fetch_list.first.family
+    socket.connect fetch_list.first
 
     socket
   end
@@ -246,24 +248,24 @@ class Durian::Resolver
                            dns_server : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32),
                            protocol : Protocol = Protocol::UDP,
                            tls : Server::TransportLayerSecurity? = nil,
-                           &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
+                           &block : FetchList ->)
     yield getaddrinfo_all host, port, ip_cache, [Server.new dns_server, protocol, tls]
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress? = nil,
                            dns_server : Socket::IPAddress = Socket::IPAddress.new("8.8.8.8", 53_i32),
                            protocol : Protocol = Protocol::UDP,
-                           tls : Server::TransportLayerSecurity? = nil) : Tuple(Fetch, Array(Socket::IPAddress))
+                           tls : Server::TransportLayerSecurity? = nil) : FetchList
     getaddrinfo_all host, port, ip_cache, [Server.new dns_server, protocol, tls]
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress?,
-                           dns_server : Array(Server), &block : Tuple(Fetch, Array(Socket::IPAddress)) ->)
+                           dns_server : Array(Server), &block : FetchList ->)
     yield getaddrinfo_all host, port, ip_cache, dns_server
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, ip_cache : Cache::IPAddress?,
-                           dns_server : Array(Server)) : Tuple(Fetch, Array(Socket::IPAddress))
+                           dns_server : Array(Server)) : FetchList
     resolver = new dns_server
     resolver.ip_cache = ip_cache if ip_cache
 
@@ -275,39 +277,43 @@ class Durian::Resolver
     yield getaddrinfo_all host, port, resolver
   end
 
-  def self.from_cloudflare(host : String, port : Int32, resolver : Resolver) : Array(Socket::IPAddress)?
+  def self.from_cloudflare(host : String, port : Int32, resolver : Resolver) : Tuple(UInt64, Array(Socket::IPAddress))?
     return unless resolver.cloudflare? host, port
     return unless cache = resolver.try &.coffee.try &.cache
     return unless list = cache.to_ip_address port
     return if list.empty?
 
-    list
+    Tuple.new cache.hash, list
   end
 
-  def self.getaddrinfo_all(host : String, port : Int32, resolver : Resolver) : Tuple(Fetch, Array(Socket::IPAddress))
+  def self.getaddrinfo_all(host : String, port : Int32, resolver : Resolver) : FetchList
     # Mapping
     _mapping = resolver.mapping? host, port
 
     # Fetch data from Mapping local
     local = resolver.mapping_local? _mapping, port if _mapping
-    return Tuple.new Fetch::Local, local if local
+    return FetchList.new type: Fetch::Local, list: local if local
 
     # Test if it is an IP address
     _address = resolver.mapping_to? _mapping, port if _mapping
     host, port = _address if _address
     ip_address = Socket::IPAddress.new host, port rescue nil
-    return Tuple.new Fetch::Local, [ip_address] if ip_address
+    return FetchList.new type: Fetch::Local, list: [ip_address] if ip_address
 
     # Fetch data from Cloudflare
     _from_cloudflare = from_cloudflare host, port, resolver
-    return Tuple.new Fetch::Coffee, _from_cloudflare if _from_cloudflare
+
+    if _from_cloudflare
+      hash, list = _from_cloudflare
+      return FetchList.new type: Fetch::Coffee, list: list, listHash: hash
+    end
 
     # Set Pending
     resolver.pending_getaddrinfo_fetch host, port, resolver if resolver.ip_cache
 
     # Fetch data from IP cache
     from_ip_cache = fetch_ip_cache host, port, resolver.ip_cache
-    return Tuple.new Fetch::Cache, from_ip_cache unless from_ip_cache.empty? if from_ip_cache
+    return FetchList.new type: Fetch::Cache, list: from_ip_cache unless from_ip_cache.empty? if from_ip_cache
 
     # Set fetch type
     record_flags = [RecordFlag::A]
@@ -329,7 +335,7 @@ class Durian::Resolver
     # Remove Pending
     resolver.getaddrinfoPendingList.delete host if resolver.ip_cache
 
-    Tuple.new Fetch::Remote, list
+    FetchList.new type: Fetch::Remote, list: list
   end
 
   def pending_getaddrinfo_fetch(host : String, port : Int32, resolver : Resolver) : Nil
