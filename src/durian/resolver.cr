@@ -62,8 +62,6 @@ class Durian::Resolver
 
         unless packet
           socket.close
-          # socket.skip_finalize = true if socket.is_a? OpenSSL::SSL::Socket::Client
-
           next task_mutex.synchronize { response_packets_list << nil }
         end
 
