@@ -225,7 +225,15 @@ class Durian::Resolver
     end
 
     choose = TCPSocket.choose_socket fetch_list.list, resolver.option.retry
-    raise Socket::Error.new "IP address cannot connect" unless choose
+
+    unless choose
+      if fetch_list.type.coffee?
+        cache = resolver.try &.coffee.try &.cache
+        cache.try &.clear if fetch_list.listHash == cache.try &.hash
+      end
+
+      raise Socket::Error.new "IP address cannot connect"
+    end
 
     socket, ip_address = choose
 
