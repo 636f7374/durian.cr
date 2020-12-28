@@ -1,5 +1,5 @@
-class Durian::Record
-  class CNAME < Durian::Record
+struct Durian::Record
+  struct CNAME < Durian::Record
     property canonicalName : String
 
     def initialize(@canonicalName : String = String.new, @cls : Cls = Cls::Internet, @ttl : UInt32 = 0_u32, @from : String? = nil)
@@ -7,11 +7,13 @@ class Durian::Record
     end
 
     {% for name in ["authority", "answer", "additional"] %}
-  def self.{{name.id}}_from_io?(protocol : Protocol, resource_record : CNAME, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
+  def self.{{name.id}}_from_io?(protocol : Protocol, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
+    resource_record = new
     data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
     buffer.write_bytes data_length, IO::ByteFormat::BigEndian
 
     resource_record.canonicalName = CNAME.address_from_io? protocol, io, data_length, buffer, maximum_length
+    resource_record
   end
   {% end %}
 

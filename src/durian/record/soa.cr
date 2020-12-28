@@ -1,5 +1,5 @@
-class Durian::Record
-  class SOA < Durian::Record
+struct Durian::Record
+  struct SOA < Durian::Record
     property primaryNameServer : String
     property authorityMailBox : String
     property serialNumber : UInt32
@@ -20,7 +20,8 @@ class Durian::Record
     end
 
     {% for name in ["authority", "answer", "additional"] %}
-  def self.{{name.id}}_from_io?(protocol : Protocol, resource_record : SOA, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
+  def self.{{name.id}}_from_io?(protocol : Protocol, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
+    resource_record = new
     data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
     buffer.write_bytes data_length, IO::ByteFormat::BigEndian
 
@@ -35,6 +36,7 @@ class Durian::Record
     resource_record.retryInterval = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
     resource_record.expireLimit = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
     resource_record.minimiumTimeToLive = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
+    resource_record
   end
   {% end %}
   end

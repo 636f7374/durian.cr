@@ -1,5 +1,5 @@
-class Durian::Record
-  class MX < Durian::Record
+struct Durian::Record
+  struct MX < Durian::Record
     property mailExchange : String
     property preference : UInt16
 
@@ -9,7 +9,8 @@ class Durian::Record
     end
 
     {% for name in ["authority", "answer", "additional"] %}
-  def self.{{name.id}}_from_io?(protocol, resource_record : MX, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
+  def self.{{name.id}}_from_io?(protocol, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
+    resource_record = new
     data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
     buffer.write_bytes data_length, IO::ByteFormat::BigEndian
 
@@ -18,6 +19,7 @@ class Durian::Record
 
     resource_record.preference = data_buffer.read_bytes UInt16, IO::ByteFormat::BigEndian
     resource_record.mailExchange = Durian.decode_address protocol, data_buffer, buffer
+    resource_record
   end
   {% end %}
   end

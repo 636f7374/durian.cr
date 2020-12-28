@@ -1,5 +1,5 @@
 module Durian::Field
-  class Authority
+  struct Authority
     property resourceRecord : Record
 
     def initialize(flag : RecordFlag = RecordFlag::ANY)
@@ -29,15 +29,16 @@ module Durian::Field
       _ttl = io.read_bytes UInt32, IO::ByteFormat::BigEndian
 
       authority = new RecordFlag.new flag
-      authority.resourceRecord.from = from
-      authority.resourceRecord.cls = Cls.new _cls
-      authority.resourceRecord.ttl = _ttl
 
       buffer.write_bytes flag, IO::ByteFormat::BigEndian
       buffer.write_bytes _cls, IO::ByteFormat::BigEndian
       buffer.write_bytes _ttl, IO::ByteFormat::BigEndian
 
-      Record.decode_authority protocol, authority.resourceRecord, io, buffer
+      raise "Decode Record Authority failed" unless resource_record = Record.decode_authority protocol, authority.flag, io, buffer
+      resource_record.from = from
+      resource_record.cls = Cls.new _cls
+      resource_record.ttl = _ttl
+      authority.resourceRecord = resource_record
 
       authority
     end

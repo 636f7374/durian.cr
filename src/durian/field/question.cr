@@ -1,5 +1,5 @@
 module Durian::Field
-  class Question
+  struct Question
     property flag : RecordFlag
     property query : String
     property cls : Cls

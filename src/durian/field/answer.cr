@@ -1,5 +1,5 @@
 module Durian::Field
-  class Answer
+  struct Answer
     property resourceRecord : Record
 
     def initialize(flag : RecordFlag = RecordFlag::ANY)
@@ -29,15 +29,16 @@ module Durian::Field
       _ttl = io.read_bytes UInt32, IO::ByteFormat::BigEndian
 
       answer = new RecordFlag.new flag
-      answer.resourceRecord.from = from
-      answer.resourceRecord.cls = Cls.new _cls
-      answer.resourceRecord.ttl = _ttl
 
       buffer.write_bytes flag, IO::ByteFormat::BigEndian
       buffer.write_bytes _cls, IO::ByteFormat::BigEndian
       buffer.write_bytes _ttl, IO::ByteFormat::BigEndian
 
-      Record.decode_answer protocol, answer.resourceRecord, io, buffer
+      raise "Decode Record Answer failed" unless resource_record = Record.decode_answer protocol, answer.flag, io, buffer
+      resource_record.from = from
+      resource_record.cls = Cls.new _cls
+      resource_record.ttl = _ttl
+      answer.resourceRecord = resource_record
 
       answer
     end
