@@ -24,7 +24,7 @@ class Durian::Cache
     end
 
     def refresh_clean_at
-      @cleanAt = Time.local
+      @mutex.synchronize { @cleanAt = Time.local }
     end
 
     def full?
@@ -32,7 +32,7 @@ class Durian::Cache
     end
 
     def clean_expired?
-      timing = Time.local - cleanAt
+      timing = Time.local - @mutex.synchronize { cleanAt }
       timing > cleanInterval
     end
 

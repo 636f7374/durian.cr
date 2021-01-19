@@ -12,7 +12,7 @@ class Durian::TCPSocket < TCPSocket
   end
 
   def self.choose_socket(list : Array(Socket::IPAddress), retry : Option::Retry?) : Tuple(::TCPSocket, Socket::IPAddress)?
-    retry_timeout, maximum_retry_ipv6, maximum_retry_ipv4 = 1_i32, 2_i32, 2_i32
+    retry_timeout, maximum_retry_ipv6, maximum_retry_ipv4 = 2_i32, 2_i32, 2_i32
 
     if _retry = retry
       retry_timeout = retry.timeout
@@ -22,6 +22,7 @@ class Durian::TCPSocket < TCPSocket
 
     timeout = retry_timeout / list.size
     timeout = 1_i32 if timeout < 1_i32
+    _timeout = timeout.seconds
 
     retry_ipv4 = 0_i32
     retry_ipv6 = 0_i32
@@ -39,7 +40,7 @@ class Durian::TCPSocket < TCPSocket
       else
       end
 
-      socket = ::TCPSocket.new address, timeout, timeout rescue nil
+      socket = ::TCPSocket.new address, _timeout, _timeout rescue nil
       next unless socket
       next if socket.closed?
 
