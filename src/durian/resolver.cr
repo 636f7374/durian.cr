@@ -315,11 +315,19 @@ class Durian::Resolver
     end
 
     # Set Pending
-    resolver.pending_getaddrinfo_fetch host, port, resolver if resolver.ip_cache
+    if resolver.ip_cache
+      resolver.pending_getaddrinfo_fetch host, port, resolver
 
-    # Fetch data from IP cache
-    from_ip_cache = fetch_ip_cache host, port, resolver.ip_cache
-    return FetchList.new type: Fetch::Cache, list: from_ip_cache unless from_ip_cache.empty? if from_ip_cache
+      # Fetch data from IP cache
+      from_ip_cache = fetch_ip_cache host, port, resolver.ip_cache
+
+      if from_ip_cache
+        unless from_ip_cache.empty?
+          resolver.getaddrinfoPendingList.delete host
+          return FetchList.new type: Fetch::Cache, list: from_ip_cache
+        end
+      end
+    end
 
     # Set fetch type
     record_flags = [RecordFlag::A]
