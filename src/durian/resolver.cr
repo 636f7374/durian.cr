@@ -65,14 +65,13 @@ class Durian::Resolver
           next task_mutex.synchronize { response_packets_list << nil }
         end
 
-        if packet.answerCount.zero? || packet.answers.empty?
-          socket.close
-          next task_mutex.synchronize { response_packets_list << nil }
-        end
-
         if strict_answer
-          include_flag = false
+          if packet.answerCount.zero? || packet.answers.empty?
+            socket.close
+            next task_mutex.synchronize { response_packets_list << nil }
+          end
 
+          include_flag = false
           packet.answers.each { |answer| break include_flag = true if answer.flag == flag }
 
           unless include_flag
@@ -218,7 +217,7 @@ class Durian::Resolver
 
   def self.get_tcp_socket!(host : String, port : Int32, resolver : Resolver, connect_timeout : Int | Float? = nil) : ::TCPSocket
     fetch_list = getaddrinfo_all host, port, resolver
-    raise Socket::Error.new "Invalid host address" if fetch_list.empty?
+    raise Socket::Error.new "DNS query result IP is empty, or DNS query failed" if fetch_list.empty?
 
     if 1_i32 == fetch_list.size || resolver.option.retry.nil?
       return ::TCPSocket.new fetch_list.first.address, fetch_list.first.port, connect_timeout: connect_timeout || 5_i32

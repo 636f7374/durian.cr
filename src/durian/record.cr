@@ -11,17 +11,17 @@ abstract struct Durian::Record
   {% for name in ["answer", "authority", "additional"] %}
   def self.decode_{{name.id}}(protocol : Protocol, resource_flag : RecordFlag, io : IO, buffer : IO)
     {% begin %}
-    case resource_flag
-      {% for flag in AvailableRecordFlag %}
-    when RecordFlag::{{flag.upcase.id}}
-        {% if flag.upcase.id == "A" || flag.upcase.id == "AAAA" || flag.upcase.id == "TXT" %}
-          Record::{{flag.id}}.{{name.id}}_from_io? io, buffer
-        {% else %}
-          Record::{{flag.id}}.{{name.id}}_from_io? protocol, io, buffer
+      case resource_flag
+        {% for flag in AvailableRecordFlag %}
+      when RecordFlag::{{flag.upcase.id}}
+          {% if flag.upcase.id == "A" || flag.upcase.id == "AAAA" || flag.upcase.id == "TXT" %}
+            Record::{{flag.id}}.{{name.id}}_from_io? io, buffer
+          {% else %}
+            Record::{{flag.id}}.{{name.id}}_from_io? protocol, io, buffer
+          {% end %}
         {% end %}
-      {% end %}
-    else
-    end
+      else
+      end
     {% end %}
   end
   {% end %}

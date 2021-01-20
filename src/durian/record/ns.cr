@@ -7,22 +7,22 @@ struct Durian::Record
     end
 
     {% for name in ["authority", "answer", "additional"] %}
-  def self.{{name.id}}_from_io?(protocol : Protocol, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
-    resource_record = new
-    data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
-    buffer.write_bytes data_length, IO::ByteFormat::BigEndian
+    def self.{{name.id}}_from_io?(protocol : Protocol, io : IO, buffer : IO, maximum_depth : Int32 = 65_i32)
+      resource_record = new
+      data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+      buffer.write_bytes data_length, IO::ByteFormat::BigEndian
 
-    resource_record.nameServer = NS.address_from_io? protocol, io, data_length, buffer, maximum_length
-    resource_record
-  end
-  {% end %}
+      resource_record.nameServer = NS.address_from_io? protocol, io, data_length, buffer, maximum_depth
+      resource_record
+    end
+    {% end %}
 
-    def self.address_from_io?(protocol : Protocol, io : IO, length : Int, buffer : IO, maximum_length : Int32 = 512_i32)
-      Durian.parse_strict_length_address protocol, io, length, buffer, recursive_depth: 0_i32, maximum_length: maximum_length
+    def self.address_from_io?(protocol : Protocol, io : IO, length : Int, buffer : IO, maximum_depth : Int32 = 65_i32)
+      Durian.parse_strict_length_address protocol, io, length, buffer, maximum_depth: maximum_depth
     end
 
-    def self.address_from_io?(protocol : Protocol, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
-      Durian.parse_chunk_address protocol, io, buffer, recursive_depth: 0_i32, maximum_length: maximum_length
+    def self.address_from_io?(protocol : Protocol, io : IO, buffer : IO, maximum_depth : Int32 = 65_i32)
+      Durian.parse_chunk_address protocol, io, buffer, maximum_depth: maximum_depth
     end
   end
 end

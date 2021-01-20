@@ -189,27 +189,19 @@ class Durian::Packet
     parse_flags_count! packet, io, buffer
 
     packet.questionCount.times do
-      break if packet.bad_decode
-
-      packet.queries << Field::Question.decode protocol, io, buffer rescue packet.bad_decode = true
+      packet.queries << Field::Question.decode protocol, io, buffer
     end
 
     packet.answerCount.times do
-      break if packet.bad_decode
-
-      packet.answers << Field::Answer.decode protocol, io, buffer rescue packet.bad_decode = true
+      packet.answers << Field::Answer.decode protocol, io, buffer
     end
 
     packet.authorityCount.times do
-      break if packet.bad_decode
-
-      packet.authority << Field::Authority.decode protocol, io, buffer rescue packet.bad_decode = true
+      packet.authority << Field::Authority.decode protocol, io, buffer
     end
 
     packet.additionalCount.times do
-      break if packet.bad_decode
-
-      packet.additional << Field::Additional.decode protocol, io, buffer rescue packet.bad_decode = true
+      packet.additional << Field::Additional.decode protocol, io, buffer
     end
 
     packet.buffer = buffer

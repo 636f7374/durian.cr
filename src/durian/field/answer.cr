@@ -23,7 +23,7 @@ module Durian::Field
     end
 
     def self.decode(protocol : Protocol, io : IO, buffer : IO)
-      from = Durian.decode_resource_pointer protocol, io, buffer
+      from = Durian.decode_by_resource_pointer protocol, io, buffer
       flag = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       _cls = io.read_bytes UInt16, IO::ByteFormat::BigEndian
       _ttl = io.read_bytes UInt32, IO::ByteFormat::BigEndian

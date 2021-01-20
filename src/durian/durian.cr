@@ -125,22 +125,113 @@ module Durian
   class BadPacket < Exception
   end
 
-  def self.decode_resource_pointer(protocol : Protocol, io : IO, buffer : IO)
-    pointer = uninitialized UInt8[2_i32]
-    pointer_flag = io.read pointer.to_slice
+  enum ResourcePointer : UInt8
+    BadLength      = 0_u8
+    InvalidPointer = 1_u8
+    OffsetZero     = 2_u8
+    Successed      = 4_u8
+  end
 
-    if 2_i32 != pointer_flag
+  enum ChunkFlag : UInt8
+    BadLength        = 0_u8
+    IndexOutOfBounds = 1_u8
+    ResourcePointer  = 2_u8
+    Successed        = 3_u8
+  end
+
+  def self.decode_chunk(buffer : IO::Memory) : Tuple(ChunkFlag, Array(String))
+    chunk_parts = [] of String
+
+    loop do
+      chunk_length_buffer = uninitialized UInt8[1_i32]
+      read_length = buffer.read chunk_length_buffer.to_slice
+      chunk_length = chunk_length_buffer.to_slice[0_i32]
+
+      return Tuple.new ChunkFlag::BadLength, chunk_parts if 1_i32 != read_length
+      break if chunk_length.zero?
+
+      if 0b00000011 == (chunk_length >> 6_i32)
+        return Tuple.new ChunkFlag::ResourcePointer, chunk_parts
+      end
+
+      return Tuple.new ChunkFlag::IndexOutOfBounds, chunk_parts if chunk_length > buffer.size
+
+      temporary = IO::Memory.new chunk_length
+      copy_length = IO.copy buffer, temporary, chunk_length
+      return Tuple.new ChunkFlag::BadLength, chunk_parts if copy_length.zero?
+
+      chunk_parts << String.new temporary.to_slice[0_i32, copy_length]
+    end
+
+    Tuple.new ChunkFlag::Successed, chunk_parts
+  end
+
+  def self.update_chunk_resource_pointer_position(protocol : Protocol, buffer : IO::Memory)
+    offset_buffer = uninitialized UInt8[1_i32]
+    read_length = buffer.read offset_buffer.to_slice
+
+    if 1_i32 != read_length
+      return ResourcePointer::BadLength
+    end
+
+    offset = offset_buffer.to_slice[0_i32]
+    return ResourcePointer::OffsetZero if offset.zero?
+    return ResourcePointer::BadLength if offset > buffer.size
+
+    before_buffer_pos = buffer.pos
+    buffer.pos = offset
+    buffer.pos += 2_i32 if protocol.tcp? || protocol.tls?
+
+    ResourcePointer::Successed
+  end
+
+  def self.decode_by_resource_pointer(protocol : Protocol, io : IO, buffer : IO::Memory, maximum_depth : Int32 = 65_i32)
+    pointer_buffer = uninitialized UInt8[2_i32]
+    read_length = io.read pointer_buffer.to_slice
+    buffer.write pointer_buffer.to_slice[0_i32, read_length]
+
+    if 2_i32 != read_length
       raise MalformedPacket.new "Expecting two bytes"
     end
 
-    slice = pointer.to_slice
+    pointer_flag = pointer_buffer.to_slice[0_i32]
 
-    if slice[0_i32] != 0b11000000
-      raise MalformedPacket.new "Invalid pointer"
+    if 0b00000011 != (pointer_flag >> 6_i32)
+      raise MalformedPacket.new "Invalid resource pointer"
     end
 
-    buffer.write slice
-    decode_address_by_pointer protocol, buffer, slice[1_i32]
+    offset = pointer_buffer.to_slice[1_i32]
+    raise MalformedPacket.new "Expecting one bytes" if offset.zero?
+    raise MalformedPacket.new "Offset index out Of bounds" if offset > buffer.size
+
+    depth_decode_by_resource_pointer! protocol, buffer, offset, maximum_depth: maximum_depth
+  end
+
+  def self.depth_decode_by_resource_pointer!(protocol : Protocol, buffer : IO::Memory, offset : Int,
+                                             question : Bool = false, maximum_depth : Int32 = 65_i32) : String?
+    before_buffer_pos = buffer.pos
+    buffer.pos = offset
+    buffer.pos += 2_i32 unless question if protocol.tcp? || protocol.tls?
+
+    chunk_list = [] of Array(String)
+    depth = maximum_depth
+
+    while !(maximum_depth -= 1_i32).zero?
+      flag, chunk_parts = decode_chunk buffer
+      chunk_list << chunk_parts unless chunk_parts.empty?
+
+      if flag.successed?
+        buffer.pos = before_buffer_pos
+        return chunk_list.flatten.join "."
+      end
+
+      if flag.resource_pointer?
+        next update_chunk_resource_pointer_position protocol, buffer
+      end
+
+      buffer.pos = before_buffer_pos
+      break
+    end
   end
 
   def self.limit_length_buffer(io : IO, length : Int) : IO::Memory
@@ -156,122 +247,58 @@ module Durian
   end
 
   def self.encode_chunk_ipv4_address(ip_address, io : IO)
-    return io.write_byte 0_u8 unless ip_address
-    return io.write_byte 0_u8 if ip_address.empty?
+    return io.write Bytes[0_u8] unless ip_address
+    return io.write Bytes[0_u8] if ip_address.empty?
 
     parts = ip_address.split "."
     parts.pop if parts.last.empty?
 
-    parts.map do |part|
+    parts.each do |part|
       io.write_bytes part.size.to_u8
       io << part
     end
 
-    io.write_byte 0_u8
+    io.write Bytes[0_i32]
   end
 
-  def self.decode_address_by_pointer(protocol : Protocol, buffer : IO, offset : Int, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32,
-                                     maximum_recursive : Int32 = 64_i32)
-    return String.new if offset.zero?
-    return String.new if offset > buffer.size
-
-    before_buffer_pos = buffer.pos
-    buffer.pos = offset
-    buffer.pos += 2_i32 if protocol.tcp? || protocol.tls?
-
-    decode = decode_address protocol, buffer, nil, recursive_depth, maximum_length, maximum_recursive
-    buffer.pos = before_buffer_pos
-
-    decode
-  end
-
-  def self.decode_address_by_pointer(protocol : Protocol, io : IO, buffer : IO, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32,
-                                     maximum_recursive : Int32 = 64_i32)
-    chunk_length = uninitialized UInt8[1_i32]
-    length = io.read chunk_length.to_slice
-
-    return String.new if length.zero?
-    return String.new if chunk_length.to_slice.first.zero?
-    return String.new if chunk_length.to_slice.first > buffer.size
-
-    decode_address_by_pointer protocol, buffer, chunk_length.to_slice.first, recursive_depth, maximum_length, maximum_recursive
-  end
-
-  def self.decode_address(protocol : Protocol, io : IO, buffer : IO?, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32,
-                          maximum_recursive : Int32 = 64_i32)
-    chunk_length = uninitialized UInt8[1_i32]
-    temporary = IO::Memory.new
-
-    loop do
-      break if recursive_depth == (maximum_recursive - 1_i32) || maximum_length <= temporary.size
-
-      length = io.read chunk_length.to_slice
-      break if length.zero? || chunk_length.to_slice.first.zero?
-      buffer = io unless buffer
-
-      if 0b11000000 == chunk_length.to_slice.first
-        break temporary << decode_address_by_pointer protocol, io, buffer, recursive_depth + 1_i32, maximum_length, maximum_recursive
-      end
-
-      IO.copy io, temporary, chunk_length.to_slice.first
-      temporary << "."
-    end
-
-    _address = String.new temporary.to_slice
-    _address = _address[0_i32..-2_i32] if _address.ends_with?('.') && 2_i32 <= _address.size
-
-    temporary.close
-    _address
-  end
-
-  def self.parse_strict_length_address(protocol : Protocol, io : IO, length : Int, buffer : IO, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32, maximum_recursive : Int32 = 64_i32)
+  def self.parse_strict_length_address(protocol : Protocol, io : IO, length : Int, buffer : IO::Memory,
+                                       maximum_depth : Int32 = 65_i32, maximum_length : Int32 = 512_i32)
     return String.new if length > maximum_length
 
     temporary = limit_length_buffer io, length
-    IO.copy temporary, buffer rescue nil
-    temporary.rewind
+    return String.new if temporary.size != length
 
-    if temporary.size != length
-      temporary.close
-      return String.new
-    end
+    before_buffer_pos = buffer.pos
+    buffer.write temporary.to_slice rescue nil
 
-    decode = decode_address protocol, temporary, buffer, recursive_depth, maximum_length, maximum_recursive
-    temporary.close
-
-    decode
+    decoded = depth_decode_by_resource_pointer! protocol, buffer, before_buffer_pos, maximum_depth: maximum_depth
+    decoded || String.new
   end
 
-  def self.parse_chunk_address(protocol : Protocol, io : IO, buffer : IO, recursive_depth : Int32 = 0_i32, maximum_length : Int32 = 512_i32,
-                               maximum_recursive : Int32 = 64_i32)
-    chunk_length = uninitialized UInt8[1_i32]
+  def self.parse_chunk_address(protocol : Protocol, io : IO, buffer : IO, maximum_depth : Int32 = 65_i32)
+    offset_buffer = uninitialized UInt8[1_i32]
     temporary = IO::Memory.new
-    pointer_address_buffer = IO::Memory.new
-    end_zero = false
 
     loop do
-      break if maximum_length <= temporary.size
-      break unless length = io.read chunk_length.to_slice
-      break if length.zero?
-      break end_zero = true if chunk_length.first.zero?
+      read_length = io.read offset_buffer.to_slice
+      temporary.write offset_buffer.to_slice
+      break if offset_buffer.to_slice[0_i32].zero?
 
-      if 0b11000000 == chunk_length.first
-        break pointer_address_buffer << decode_address_by_pointer protocol, io, buffer
+      if 0b00000011 == (offset_buffer.to_slice[0_i32] >> 6_i32)
+        read_length = io.read offset_buffer.to_slice
+        temporary.write offset_buffer.to_slice
+
+        break
       end
 
-      temporary.write chunk_length.to_slice
-      IO.copy io, temporary, chunk_length.first
+      copy_length = IO.copy io, temporary, offset_buffer.to_slice[0_i32]
+      break if copy_length != offset_buffer.to_slice[0_i32]
     end
 
-    temporary.rewind
-    IO.copy temporary, buffer
-    buffer.write Bytes[0_i32] if end_zero
-    temporary.rewind
+    before_buffer_pos = buffer.pos
+    buffer.write temporary.to_slice
 
-    decode = decode_address protocol, temporary, buffer, recursive_depth, maximum_length, maximum_recursive
-    pointer_address = pointer_address_buffer.to_slice
-    temporary.close ensure pointer_address_buffer.close
-
-    String.build { |io| io << decode << String.new pointer_address }
+    decoded = depth_decode_by_resource_pointer! protocol, buffer, before_buffer_pos, question: true, maximum_depth: maximum_depth
+    decoded || String.new
   end
 end

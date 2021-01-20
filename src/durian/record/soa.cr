@@ -20,24 +20,30 @@ struct Durian::Record
     end
 
     {% for name in ["authority", "answer", "additional"] %}
-  def self.{{name.id}}_from_io?(protocol : Protocol, io : IO, buffer : IO, maximum_length : Int32 = 512_i32)
-    resource_record = new
-    data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
-    buffer.write_bytes data_length, IO::ByteFormat::BigEndian
+    def self.{{name.id}}_from_io?(protocol : Protocol, io : IO, buffer : IO)
+      resource_record = new
+      data_length = io.read_bytes UInt16, IO::ByteFormat::BigEndian
+      buffer.write_bytes data_length, IO::ByteFormat::BigEndian
 
-    data_buffer = Durian.limit_length_buffer io, data_length
-    IO.copy data_buffer, buffer ensure data_buffer.rewind
+      data_buffer = Durian.limit_length_buffer io, data_length
 
-    resource_record.primaryNameServer = Durian.decode_address protocol, data_buffer, buffer
-    resource_record.authorityMailBox = Durian.decode_address protocol, data_buffer, buffer
+      resource_record.primaryNameServer = Durian.parse_chunk_address protocol, data_buffer, buffer
+      resource_record.authorityMailBox = Durian.parse_chunk_address protocol, data_buffer, buffer
 
-    resource_record.serialNumber = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
-    resource_record.refreshInterval = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
-    resource_record.retryInterval = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
-    resource_record.expireLimit = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
-    resource_record.minimiumTimeToLive = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
-    resource_record
-  end
-  {% end %}
+      resource_record.serialNumber = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
+      resource_record.refreshInterval = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
+      resource_record.retryInterval = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
+      resource_record.expireLimit = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
+      resource_record.minimiumTimeToLive = data_buffer.read_bytes UInt32, IO::ByteFormat::BigEndian
+
+      buffer.write_bytes resource_record.serialNumber
+      buffer.write_bytes resource_record.refreshInterval
+      buffer.write_bytes resource_record.retryInterval
+      buffer.write_bytes resource_record.expireLimit
+      buffer.write_bytes resource_record.minimiumTimeToLive
+
+      resource_record
+    end
+    {% end %}
   end
 end
