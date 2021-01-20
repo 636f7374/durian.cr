@@ -99,14 +99,6 @@ class Durian::Packet
     @buffer = nil
   end
 
-  def bad_decode=(value : Bool)
-    @badDecode = value
-  end
-
-  def bad_decode
-    @badDecode
-  end
-
   def add_query(query : String, flag : RecordFlag)
     {% begin %}
       case flag
