@@ -38,9 +38,14 @@ jobs:
     - name: Actions - Use CheckOut@V2
       uses: actions/checkout@v2
     - name: TemporaryFix - Brew Package Management (Github/Action#1811)
-      run: brew untap local/openssl && brew untap local/python2 && brew cask install xquartz
-    - name: Install - Brew Package Management
+      run: |
+        brew uninstall openssl
+        rm -rf /usr/local/etc/openssl
+        rm -rf /usr/local/etc/openssl@1.1
+    - name: Update - Brew Package Management
       run: brew update
+    - name: Install - Brew Package
+      run: brew install openssl
     - name: Install - Crystal Language
       run: brew install crystal
     - name: Install - Durian Dependencies
