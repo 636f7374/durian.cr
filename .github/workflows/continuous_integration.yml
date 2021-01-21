@@ -38,7 +38,7 @@ jobs:
     - name: Actions - Use CheckOut@V2
       uses: actions/checkout@v2
     - name: TemporaryFix - Brew Package Management (Github/Action#1811)
-      run: brew uninstall openssl@1.0.2t && brew uninstall python@2.7.17 && brew untap local/openssl && brew untap local/python2 && brew cask install xquartz
+      run: brew untap local/openssl && brew untap local/python2 && brew cask install xquartz
     - name: Install - Brew Package Management
       run: brew update
     - name: Install - Crystal Language
