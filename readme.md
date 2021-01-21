@@ -194,6 +194,7 @@ $ make test
 * [Blogs | The problem with libresolv](https://skarnet.org/software/s6-dns/libresolv.html)
 * [Blogs | The problem with getaddrinfo](https://skarnet.org/software/s6-dns/getaddrinfo.html)
 * [Blogs | What does getaddrinfo do?](https://jameshfisher.com/2018/02/03/what-does-getaddrinfo-do/)
+* [Blogs | A warm welcome to DNS](https://powerdns.org/hello-dns/basic.md.html)
 * [Document | DNS Query Message Format](http://www.firewall.cx/networking-topics/protocols/domain-name-system-dns/160-protocols-dns-query.html)
 * [Docuemnt | Protocol and Format](http://www-inf.int-evry.fr/~hennequi/CoursDNS/NOTES-COURS_eng/msg.html)
 * [Document | Binary Numbers](http://www.oualline.com/practical.programmer/numbers.html)

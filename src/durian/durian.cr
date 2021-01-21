@@ -133,11 +133,10 @@ module Durian
   end
 
   enum ChunkFlag : UInt8
-    BadLength             = 0_u8
-    IndexOutOfBounds      = 1_u8
-    UInt16ResourcePointer = 2_u8
-    ResourcePointer       = 3_u8
-    Successed             = 4_u8
+    BadLength        = 0_u8
+    IndexOutOfBounds = 1_u8
+    ResourcePointer  = 2_u8
+    Successed        = 3_u8
   end
 
   def self.decode_chunk(buffer : IO::Memory) : Tuple(ChunkFlag, Array(String), UInt8)
@@ -152,10 +151,6 @@ module Durian
       break if chunk_length.zero?
 
       if 0b00000011 == (chunk_length >> 6_i32)
-        unless (chunk_length - 0b11000000).zero?
-          return Tuple.new ChunkFlag::UInt16ResourcePointer, chunk_parts, chunk_length
-        end
-
         return Tuple.new ChunkFlag::ResourcePointer, chunk_parts, chunk_length
       end
 
@@ -179,13 +174,17 @@ module Durian
     read_length = buffer.read offset_buffer.to_slice
     return ResourcePointer::BadLength if 1_i32 != read_length
 
+    # References: A warm welcome to DNS - https://powerdns.org/hello-dns/basic.md.html
+    # In this case, the DNS name of the answer is encoded is 0xc0 0x0c.
+    # The c0 part has the two most significant bits set, indicating that the following 6+8 bits are a pointer to somewhere earlier in the message.
+    # In this case, this points to position 12 (= 0x0c) within the packet, which is immediately after the DNS header.
+    # There we find 'www.ietf.org'.
+    # Note: (pointer 6bits + offset 8bits)
+
     offset = offset_buffer.to_slice[0_i32]
+    offset = ((chunk_length - 0b11000000).to_i32 << 8_u8) | offset
     return ResourcePointer::OffsetZero if offset.zero?
     return ResourcePointer::BadLength if offset > buffer.size
-
-    unless (chunk_length - 0b11000000).zero?
-      offset = (((chunk_length - 0b11000000).to_i32 << 8_u8) | offset)
-    end
 
     before_buffer_pos = buffer.pos
     buffer.pos = offset
@@ -210,41 +209,9 @@ module Durian
     end
 
     offset = pointer_buffer.to_slice[1_i32]
+    offset = ((pointer_flag - 0b11000000).to_i32 << 8_u8) | offset
     raise MalformedPacket.new "Expecting one bytes" if offset.zero?
     raise MalformedPacket.new "Offset index out Of bounds" if offset > buffer.size
-
-    # My goodness, I was here and there for two days.
-    # Sometimes the resource pointer is not necessarily 0xc0, maybe 0xc1, maybe other.
-    # I consulted various information to no avail, guessing that the offset may exceed 255.
-    # So replace the first two high bits of the pointer head with 0, and then merge it with the offset into UInt16.
-    # This will get a correct Offset.
-    # This is terrible, So with this code comment.
-    #
-    # payload_size = 493
-    # ns1_offset = 464 - 42 (Wireshark layer) = 422
-    # 422 - 256 (UInt8 Max 0-255) = offset 166
-    #
-    # pointer = [\xc1 (0b11000001), \xa6(0b10100110)] = [193, 166]
-    # 166 + (UInt8 (0..255).size) = 422
-    #
-    #
-    # 422 UInt16 = 0b0000000110100110
-    #
-    # \xc1 - \xc0
-    # 0b11000001 - 0b11000000
-    #
-    # first_two_high_bitwise = 0xc0 # => 0b11000000 / 192_u8
-    # pointer = 0xc1 # => 0b11000001 / 193_u8
-    # offset = 0xa6 # => 0b10100110 / 166_u8
-    # (<< 8) = uint8 -> uint16
-    # real_offset = ((pointer - first_two_high_bitwise) << 8) | offset
-    # equal: 0000000100000000 |
-    #        0000000010100110
-    #     =  0000000110100110 = 422
-
-    unless (pointer_flag - 0b11000000).zero?
-      offset = (((pointer_flag - 0b11000000).to_i32 << 8_u8) | offset)
-    end
 
     depth_decode_by_resource_pointer! protocol, buffer, offset, maximum_depth: maximum_depth
   end
@@ -267,7 +234,7 @@ module Durian
         return chunk_list.flatten.join "."
       end
 
-      if flag.resource_pointer? || flag.u_int16_resource_pointer?
+      if flag.resource_pointer?
         next update_chunk_resource_pointer_position protocol, buffer, chunk_length, question
       end
 
