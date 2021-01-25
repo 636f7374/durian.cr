@@ -1,14 +1,10 @@
 class HTTP::Client
   def dns_resolver=(value : Durian::Resolver)
-    @dns_resolver = value
+    @dnsResolver = value
   end
 
   def dns_resolver
-    @dns_resolver
-  end
-
-  def io_socket
-    @socket
+    @dnsResolver
   end
 
   def tls_context
@@ -16,8 +12,7 @@ class HTTP::Client
   end
 
   def close
-    @socket.try &.close rescue nil
-    tcp_socket.try &.close rescue nil
+    @io.try &.close rescue nil
   end
 
   private def create_socket(hostname : String)
@@ -26,17 +21,9 @@ class HTTP::Client
     Durian::TCPSocket.connect hostname, @port, resolver, @connect_timeout
   end
 
-  def tcp_socket=(value : TCPSocket)
-    @tcp_socket = value
-  end
-
-  def tcp_socket
-    @tcp_socket
-  end
-
-  def set_wrapped(socket : IO)
-    return if @socket
-    @socket = socket
+  def set_wrapped(wrapped : IO)
+    return if @io
+    @io = wrapped
 
     begin
       hostname = @host.starts_with?('[') && @host.ends_with?(']') ? @host[1_i32..-2_i32] : @host
@@ -44,11 +31,10 @@ class HTTP::Client
       {% unless flag? :without_openssl %}
         case _tls = tls_context
         when OpenSSL::SSL::Context::Client
-          socket = OpenSSL::SSL::Socket::Client.new socket, context: _tls, sync_close: true, hostname: @host
+          tls_socket = OpenSSL::SSL::Socket::Client.new wrapped, context: _tls, sync_close: true, hostname: @host
+          @io = tls_socket
         end
       {% end %}
-
-      @socket = socket
     rescue ex
       close
 
@@ -56,27 +42,29 @@ class HTTP::Client
     end
   end
 
-  private def socket
-    _socket = @socket
-    return _socket if _socket
+  private def io
+    _io = @io
+    return _io if _io
+
+    raise "This HTTP::Client cannot be reconnected" unless @reconnect
 
     begin
       hostname = @host.starts_with?('[') && @host.ends_with?(']') ? @host[1_i32..-2_i32] : @host
-
-      socket = create_socket hostname
-      socket.read_timeout = @read_timeout if @read_timeout
-      socket.sync = false
-      @socket = socket
-      self.tcp_socket = socket
+      _io = create_socket hostname
+      _io.read_timeout = @read_timeout if @read_timeout
+      _io.write_timeout = @write_timeout if @write_timeout
+      _io.sync = false
+      @io = _io
 
       {% unless flag? :without_openssl %}
         case _tls = tls_context
         when OpenSSL::SSL::Context::Client
-          socket = OpenSSL::SSL::Socket::Client.new socket, context: _tls, sync_close: true, hostname: @host
+          _io = OpenSSL::SSL::Socket::Client.new _io, context: _tls, sync_close: true, hostname: @host
+          @io = _io
         end
       {% end %}
 
-      @socket = socket
+      _io
     rescue ex
       close
 

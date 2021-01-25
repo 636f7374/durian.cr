@@ -43,12 +43,11 @@ jobs:
         brew cleanup -s openssl
         brew cleanup --prune-prefix
         brew install openssl
-        brew link --overwrite openssl
         brew uninstall --force --ignore-dependencies python
+        rm $(which 2to3)
         brew cleanup -s python
         brew cleanup --prune-prefix
         brew install python
-        brew link --overwrite python
     - name: Update - Brew Package Management
       run: brew update
     - name: Install - Crystal Language
