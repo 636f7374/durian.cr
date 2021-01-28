@@ -230,6 +230,8 @@ $ make test
 |**[rdp](https://github.com/rdp)**|||√|
 |**[teknomunk](https://github.com/teknomunk)**|||√|
 |**[ilmanzo](https://github.com/ilmanzo)**|||√|
+|**[yunixon](https://github.com/yunixon)**|||√|
+|**[z64](https://github.com/z64)**|||√|
 
 ## License
 
