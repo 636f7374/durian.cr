@@ -19,8 +19,16 @@ class Durian::Resolver
       list.first
     end
 
+    def first?
+      list.first?
+    end
+
     def last
       list.last
+    end
+
+    def last?
+      list.last?
     end
   end
 end
