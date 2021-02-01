@@ -37,17 +37,6 @@ jobs:
     steps:
     - name: Actions - Use CheckOut@V2
       uses: actions/checkout@v2
-    - name: TemporaryFix - Brew Package Management (Github/Action#1811)
-      run: |
-        brew uninstall --force --ignore-dependencies openssl
-        brew cleanup -s openssl
-        brew cleanup --prune-prefix
-        brew install openssl
-        brew uninstall --force --ignore-dependencies python
-        rm $(which 2to3)
-        brew cleanup -s python
-        brew cleanup --prune-prefix
-        brew install python
     - name: Update - Brew Package Management
       run: brew update
     - name: Install - Crystal Language
