@@ -205,12 +205,12 @@ class Durian::Resolver
 
   def self.getaddrinfo!(host : String, port : Int32, resolver : Resolver, try_connect : Bool = true) : Tuple(Fetch, Socket::IPAddress)
     fetch_list = getaddrinfo_all host, port, resolver
-    raise Socket::Error.new "Invalid host address" if fetch_list.empty?
+    raise Socket::Error.new "DNS query result IP is empty, or DNS query failed" if fetch_list.empty?
 
     return Tuple.new fetch_list.type, fetch_list.first if 1_i32 == fetch_list.size || resolver.option.retry.nil? || !try_connect
 
     ip_address = TCPSocket.try_connect_ip_address fetch_list.list, resolver.option.retry
-    raise Socket::Error.new "IP address cannot connect" unless ip_address
+    raise Socket::Error.new "Connection refused for all IP addresses" unless ip_address
 
     Tuple.new fetch_list.type, ip_address
   end
@@ -223,28 +223,21 @@ class Durian::Resolver
       return ::TCPSocket.new fetch_list.first.address, fetch_list.first.port, connect_timeout: connect_timeout || 5_i32
     end
 
-    choose = TCPSocket.choose_socket fetch_list.list, resolver.option.retry
+    TCPSocket.choose_socket(fetch_list.list, resolver.option.retry).try { |tuple| return tuple.first }
 
-    unless choose
-      if fetch_list.type.coffee?
-        cache = resolver.try &.coffee.try &.cache
-        cache.try &.clear if fetch_list.listHash == cache.try &.hash
-      end
-
-      raise Socket::Error.new "IP address cannot connect"
+    if fetch_list.type.coffee?
+      resolver.try &.coffee.try &.cache.try { |_coffee_cache| _coffee_cache.clear if fetch_list.listHash == _coffee_cache.cache_hash }
     end
 
-    socket, ip_address = choose
-
-    socket
+    raise Socket::Error.new "Connection refused for all IP addresses"
   end
 
-  def self.get_udp_socket!(host : String, port : Int32, resolver : Resolver) : ::UDPSocket
+  def self.get_udp_socket!(host : String, port : Int32, resolver : Resolver, connect_timeout : Int | Float? = nil) : ::UDPSocket
     fetch_list = getaddrinfo_all host, port, resolver
-    raise Socket::Error.new "Invalid host address" if fetch_list.empty?
+    raise Socket::Error.new "DNS query result IP is empty, or DNS query failed" unless first = fetch_list.first?
 
-    socket = UDPSocket.new fetch_list.first.family
-    socket.connect fetch_list.first
+    socket = UDPSocket.new first.family
+    socket.connect first, connect_timeout: connect_timeout || 5_i32
 
     socket
   end
@@ -288,7 +281,7 @@ class Durian::Resolver
     return unless list = cache.to_ip_address port
     return if list.empty?
 
-    Tuple.new cache.hash, list
+    Tuple.new cache.cache_hash, list
   end
 
   def self.getaddrinfo_all(host : String, port : Int32, resolver : Resolver) : FetchList
