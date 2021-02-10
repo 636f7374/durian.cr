@@ -237,7 +237,14 @@ class Durian::Resolver
     raise Socket::Error.new "DNS query result IP is empty, or DNS query failed" unless first = fetch_list.first?
 
     socket = UDPSocket.new first.family
-    socket.connect first, connect_timeout: connect_timeout || 5_i32
+
+    begin
+      socket.connect first, connect_timeout: connect_timeout || 5_i32
+    rescue ex
+      socket.close
+
+      raise ex
+    end
 
     socket
   end
