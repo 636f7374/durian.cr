@@ -1,6 +1,8 @@
 name: durian
 version: 0.1.5
 
+crystal: ">= 0.35.0, < 2.0.0"
+
 dependencies:
   coffee:
     github: 636f7374/coffee.cr
